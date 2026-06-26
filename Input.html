@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Password Check Example</title>
+</head>
+<body>
+
+    <!-- 1. HTML Input Elements -->
+    <label for="myInput">Enter Password:</label>
+    <input type="password" id="myInput" placeholder="Type here...">
+    <button onclick="checkPassword()">Submit</button>
+
+    <!-- 2. JavaScript Logic -->
+    <script>
+        function checkPassword() {
+            // Get the value typed by the user
+            var userInput = document.getElementById("myInput").value;
+
+            // Check if "The input" == Password
+            if (userInput == "Secret123") {
+                alert("Access Granted!");
+            } else {
+                alert("Incorrect Password. Try again.");
+            }
+        }
+    </script>
+
+</body>
+</html>
