@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <title>Google</title>
+    <style>
+    .shiny-rainbow {
+        /* Set font size and weight so the text is big and bold */
+        font-size: 4rem;
+        font-weight: 900;
+        font-family: sans-serif;
+        
+        /* 1. Create the Rainbow Gradient */
+        background: linear-gradient(
+          90deg, 
+          #ff2a00, 
+          #ffc400, 
+          #00ff2a, 
+          #00c4ff, 
+          #a200ff, 
+          #ff00a2
+        );
+        
+        /* 2. Clip the background to the text shape */
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        
+        /* 3. Add a soft glow effect */
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        
+        /* 4. Animate the shine (light reflection) moving across the text */
+        position: relative;
+        background-size: 200% auto;
+        animation: shine 3s linear infinite;
+      }
+      
+      @keyframes shine {
+        to {
+          background-position: -200% center;
+        }
+      }
+    </style>      
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            color: #202124;
+        }
+        .logo {
+            font-size: 96px;
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            margin-bottom: 24px;
+        }
+        .search-box {
+            width: 100%;
+            max-width: 584px;
+            display: flex;
+            align-items: center;
+            border: 1px solid #dfe1e5;
+            border-radius: 24px;
+            padding: 10px 14px;
+            box-shadow: 0 1px 6px rgba(32,33,36,.28);
+        }
+        .search-box input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            padding: 10px;
+        }
+        .search-box button {
+            margin-left: 8px;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #f8f9fa;
+            color: #3c4043;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .search-box button:hover {
+            background: #f1f3f4;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo; shiny-rainbow">Google</div>
+    <form class="search-box" action="https://www.google.com/search" method="GET">
+        <input name="q" type="text" aria-label="Search" placeholder="Search Google or type a URL">
+        <button type="submit">Google Search</button>
+    </form>
+
+</body></html>
