@@ -1,3 +1,0 @@
-<Files "Grayson's_website.html">
-    Header set Content-Security-Policy "frame-ancestors 'none';"
-</Files>
