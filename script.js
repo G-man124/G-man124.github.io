@@ -1387,6 +1387,13 @@ function setupEvents() {
 
             }
         );
+    document
+    .getElementById("deleteAccountButton")
+    .addEventListener(
+        "click",
+        deleteAccount
+    );
+
 
 
     document
