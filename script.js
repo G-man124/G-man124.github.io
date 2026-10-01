@@ -264,6 +264,11 @@ function updateAuthUI() {
     const logoutButton =
         document.getElementById("logoutButton");
 
+    const deleteAccountButton =
+        document.getElementById(
+            "deleteAccountButton"
+        );
+
     const userMessage =
         document.getElementById("userMessage");
 
@@ -271,9 +276,12 @@ function updateAuthUI() {
     if (currentUser) {
 
         loginButton.hidden = true;
+
         signupButton.hidden = true;
 
         logoutButton.hidden = false;
+
+        deleteAccountButton.hidden = false;
 
         userMessage.hidden = false;
 
@@ -283,15 +291,19 @@ function updateAuthUI() {
     } else {
 
         loginButton.hidden = false;
+
         signupButton.hidden = false;
 
         logoutButton.hidden = true;
+
+        deleteAccountButton.hidden = true;
 
         userMessage.hidden = true;
 
     }
 
 }
+
 
 
 /* ==========================================
