@@ -1445,6 +1445,92 @@ function handleUploadOpen() {
     openModal("uploadModal");
 
 }
+async function deleteAccount() {
+
+    if (!currentUser) {
+        showToast("You are not logged in.");
+        return;
+    }
+
+    const confirmed = window.confirm(
+        "Are you sure you want to delete your account?\n\n" +
+        "This will permanently delete:\n" +
+        "• Your account\n" +
+        "• All apps you uploaded\n" +
+        "• Your login information\n\n" +
+        "This cannot be undone."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+
+        // Delete the user's account
+        await deleteItem(
+            "users",
+            currentUser.id
+        );
+
+        // Find all apps uploaded by this user
+        const userApps = apps.filter(
+            app =>
+                String(app.ownerId) ===
+                String(currentUser.id)
+        );
+
+        // Delete all of their apps
+        for (const app of userApps) {
+
+            await deleteItem(
+                "apps",
+                app.id
+            );
+
+        }
+
+        // Remove apps from memory
+        apps = apps.filter(
+            app =>
+                String(app.ownerId) !==
+                String(currentUser.id)
+        );
+
+        // Remove user from memory
+        users = users.filter(
+            user =>
+                String(user.id) !==
+                String(currentUser.id)
+        );
+
+        // Log out
+        currentUser = null;
+
+        // Remove saved login
+        localStorage.removeItem(
+            "myPlayStoreUser"
+        );
+
+        updateAuthUI();
+
+        renderApps();
+
+        showToast(
+            "Your account has been deleted."
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        showToast(
+            "Could not delete your account."
+        );
+
+    }
+}
+
 
 
 /* ==========================================
@@ -1452,3 +1538,4 @@ function handleUploadOpen() {
 ========================================== */
 
 startApp();
+
