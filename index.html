@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Play Store</title>
+
+    <meta
+        name="description"
+        content="Discover, upload and download apps from My Play Store."
+    >
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="header">
+
+    <a href="./" class="logo">
+        <span>▶</span> My Play Store
+    </a>
+
+    <div class="search">
+        <input
+            type="search"
+            id="search"
+            placeholder="Search apps..."
+            autocomplete="off"
+        >
+    </div>
+
+    <div class="header-buttons">
+
+        <button
+            id="loginButton"
+            class="button button-light"
+            type="button">
+            Login
+        </button>
+
+        <button
+            id="signupButton"
+            class="button button-primary"
+            type="button">
+            Sign Up
+        </button>
+
+        <button
+            id="logoutButton"
+            class="button button-danger"
+            type="button"
+            hidden>
+            Logout
+        </button>
+
+        <button
+            id="uploadButton"
+            class="button button-green"
+            type="button">
+            + Upload
+        </button>
+
+    </div>
+
+</header>
+
+
+<div class="layout">
+
+    <aside class="sidebar">
+
+        <button class="category active" data-category="All">
+            🏠 Home
+        </button>
+
+        <button class="category" data-category="Games">
+            🎮 Games
+        </button>
+
+        <button class="category" data-category="Education">
+            📚 Education
+        </button>
+
+        <button class="category" data-category="Productivity">
+            💼 Productivity
+        </button>
+
+        <button class="category" data-category="Entertainment">
+            🎬 Entertainment
+        </button>
+
+        <button class="category" data-category="Other">
+            📱 Other
+        </button>
+
+    </aside>
+
+
+    <main class="main">
+
+        <section class="hero">
+
+            <div>
+                <p class="hero-label">WELCOME TO MY PLAY STORE</p>
+
+                <h1>Discover great apps.</h1>
+
+                <p>
+                    Find, upload and download apps from your own
+                    personal app marketplace.
+                </p>
+
+                <button
+                    id="heroUploadButton"
+                    class="hero-button"
+                    type="button">
+                    Upload an App
+                </button>
+            </div>
+
+            <div class="hero-icon">
+                ▶
+            </div>
+
+        </section>
+
+
+        <div id="userMessage" class="user-message" hidden></div>
+
+
+        <div class="section-header">
+
+            <div>
+                <h2>Apps</h2>
+                <p id="appCount">0 apps</p>
+            </div>
+
+        </div>
+
+
+        <div id="appGrid" class="app-grid"></div>
+
+    </main>
+
+</div>
+
+
+<!-- SIGN UP -->
+
+<div class="modal" id="signupModal" hidden>
+
+    <div class="modal-box">
+
+        <button
+            class="close"
+            data-close="signupModal"
+            type="button">
+            ×
+        </button>
+
+        <h2>Create account</h2>
+
+        <p class="modal-description">
+            Create an account to upload and manage your apps.
+        </p>
+
+        <form id="signupForm">
+
+            <label>
+                Username
+                <input
+                    id="signupUsername"
+                    type="text"
+                    minlength="2"
+                    maxlength="30"
+                    required
+                    autocomplete="username">
+            </label>
+
+            <label>
+                Email
+                <input
+                    id="signupEmail"
+                    type="email"
+                    required
+                    autocomplete="email">
+            </label>
+
+            <label>
+                Password
+                <input
+                    id="signupPassword"
+                    type="password"
+                    minlength="6"
+                    required
+                    autocomplete="new-password">
+            </label>
+
+            <button
+                class="submit-button"
+                type="submit">
+                Create Account
+            </button>
+
+        </form>
+
+        <p class="switch-auth">
+            Already have an account?
+            <button id="switchLogin" type="button">
+                Login
+            </button>
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- LOGIN -->
+
+<div class="modal" id="loginModal" hidden>
+
+    <div class="modal-box">
+
+        <button
+            class="close"
+            data-close="loginModal"
+            type="button">
+            ×
+        </button>
+
+        <h2>Welcome back</h2>
+
+        <p class="modal-description">
+            Login to your My Play Store account.
+        </p>
+
+        <form id="loginForm">
+
+            <label>
+                Email
+                <input
+                    id="loginEmail"
+                    type="email"
+                    required
+                    autocomplete="email">
+            </label>
+
+            <label>
+                Password
+                <input
+                    id="loginPassword"
+                    type="password"
+                    required
+                    autocomplete="current-password">
+            </label>
+
+            <button
+                class="submit-button"
+                type="submit">
+                Login
+            </button>
+
+        </form>
+
+        <p class="switch-auth">
+            Don't have an account?
+            <button id="switchSignup" type="button">
+                Sign Up
+            </button>
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- UPLOAD -->
+
+<div class="modal" id="uploadModal" hidden>
+
+    <div class="modal-box">
+
+        <button
+            class="close"
+            data-close="uploadModal"
+            type="button">
+            ×
+        </button>
+
+        <h2>Upload an app</h2>
+
+        <p class="modal-description">
+            Add an app to your marketplace.
+        </p>
+
+        <form id="uploadForm">
+
+            <label>
+                App Name
+                <input
+                    id="appName"
+                    type="text"
+                    maxlength="60"
+                    required>
+            </label>
+
+            <label>
+                Developer
+                <input
+                    id="developer"
+                    type="text"
+                    maxlength="60"
+                    required>
+            </label>
+
+            <label>
+                Description
+                <textarea
+                    id="description"
+                    maxlength="500"
+                    required></textarea>
+            </label>
+
+            <label>
+                Category
+
+                <select id="category">
+
+                    <option value="Games">Games</option>
+                    <option value="Education">Education</option>
+                    <option value="Productivity">Productivity</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Other">Other</option>
+
+                </select>
+
+            </label>
+
+            <label>
+                App Icon
+                <input
+                    id="icon"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    required>
+            </label>
+
+            <label>
+                App File
+                <input
+                    id="appFile"
+                    type="file"
+                    required>
+            </label>
+
+            <button
+                class="submit-button"
+                type="submit">
+                Upload App
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- APP DETAILS -->
+
+<div class="modal" id="detailsModal" hidden>
+
+    <div class="modal-box">
+
+        <button
+            class="close"
+            data-close="detailsModal"
+            type="button">
+            ×
+        </button>
+
+        <div id="detailsContent"></div>
+
+    </div>
+
+</div>
+
+
+<div id="toast" class="toast"></div>
+
+
+<script src="script.js"></script>
+
+</body>
+</html>
