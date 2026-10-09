@@ -10,6 +10,7 @@
             font-family: Arial, sans-serif;
             margin: 20px;
             max-width: 700px;
+            background-image: linear-gradient(to bottom right, #80ff00, #008fd5, #ff000d, #ffff00, #14fb04);
         }
         .video-container {
             display: flex;
@@ -55,10 +56,31 @@
         document.body.appendChild(imgElement); // Adds the image to the page
     }
     </script>
+    <style>
+    .warning-box {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+    }
+    .warning-icon {
+      font-size: 20px;
+      margin-right: 10px;
+    }
+  </style>
+  
 
     <h1 id="text-to-change" style="text-shadow: 2px 2px #ff0000;"> <input type="color" id="colorPicker"></input>
         Grayson's Website! 
-    </h1>
+    </h1><div class="warning-box">
+  <span class="warning-icon">&#9888;</span>
+  <strong>Warning:</strong>&nbsp;Some Stuff On This Website Only Works On a Computer.
+</div>
         
     <script>
         const picker = document.getElementById('colorPicker');
@@ -70,7 +92,7 @@
         });
     </script>
 
-    <p>I Like <p onclick="Website_link('/1.8.8.html')">Minecraft</p> Coding, Video Games And Computer Stuff</p>
+    <p>I Like Coding, Video Games And Computer Stuff</p>
     <br>
     <a onclick="displayImage()" href="#ai_call" >Want to call a Ai?</a>
     <br>
@@ -283,5 +305,167 @@
                 stopBtn.disabled = true;
             });
         </script>
+        <div id="pointer-lock-game-holder"></div>
+        <script>
+    // Wrap everything in an Immediately Invoked Function Expression (IIFE) to avoid breaking variables in your other HTML files
+    (function() {
+        // 1. Create and inject CSS Styles dynamically
+        const styles = `
+            .pl-game-wrapper {
+                position: relative;
+                width: 800px;
+                height: 600px;
+                margin: 20px auto;
+                font-family: sans-serif;
+            }
+            .pl-canvas {
+                border: 2px solid #555;
+                background-image: linear-gradient(to bottom right, #80ff00, #008fd5, #ff000d, #ffff00, #14fb04);
+                cursor: pointer;
+                display: block;
+            }
+            .pl-menu {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.85);
+                color: white;
+                padding: 20px;
+                text-align: center;
+                border-radius: 8px;
+                pointer-events: none;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            }
+            .pl-menu h2 { margin: 0 0 10px 0; font-size: 20px; }
+            .pl-menu p { margin: 0; font-size: 14px; color: #ccc; }
+        `;
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = styles;
+        document.head.appendChild(styleSheet);
+    
+        // 2. Find the injection container
+        let container = document.getElementById('pointer-lock-game-holder');
+        if (!container) {
+            container = document.createElement('div');
+            document.body.appendChild(container);
+        }
+    
+        // 3. Inject the HTML Structure
+        container.innerHTML = `
+            <div class="pl-game-wrapper">
+                <canvas class="pl-canvas" width="800" height="600"></canvas>
+                <div class="pl-menu">
+                    <h2>Click Canvas to Play</h2>
+                    <p>Move mouse to aim. Click to shoot. Press ESC to unlock.</p>
+                </div>
+            </div>
+        `;
+    
+        // 4. Game Logic Engine Setup
+        const canvas = container.querySelector('.pl-canvas');
+        const ctx = canvas.getContext('2d');
+        const menu = container.querySelector('.pl-menu');
+    
+        let player = { x: canvas.width / 2, y: canvas.height / 2, radius: 12 };
+        let isLocked = false;
+        let particles = [];
+    
+        // Click handler to request lock OR fire weapons
+        canvas.addEventListener('click', () => {
+            if (!isLocked) {
+                canvas.requestPointerLock({ unadjustedMovement: true });
+            } else {
+                // Shoot 8 random sparks outwards on click
+                for (let i = 0; i < 8; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 4;
+                    particles.push({
+                        x: player.x,
+                        y: player.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        radius: 3 + Math.random() * 3,
+                        alpha: 1,
+                        decay: 0.02 + Math.random() * 0.02
+                    });
+                }
+            }
+        });
+    
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === canvas) {
+                isLocked = true;
+                menu.style.display = 'none';
+            } else {
+                isLocked = false;
+                menu.style.display = 'block';
+            }
+        });
+    
+        document.addEventListener('mousemove', (e) => {
+            if (isLocked) {
+                player.x += e.movementX;
+                player.y += e.movementY;
+    
+                if (player.x < 0) player.x = 0;
+                if (player.x > canvas.width) player.x = canvas.width;
+                if (player.y < 0) player.y = 0;
+                if (player.y > canvas.height) player.y = canvas.height;
+            }
+        });
+    
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // --- Update and Draw Particles ---
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+                
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            // --- Draw Reticle Crosshair ---
+            ctx.strokeStyle = '#000000'; // Black core lines
+            ctx.lineWidth = 3;
+            
+            // Horizontal Line
+            ctx.beginPath();
+            ctx.moveTo(player.x - player.radius, player.y);
+            ctx.lineTo(player.x + player.radius, player.y);
+            ctx.stroke();
+            
+            // Vertical Line
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y - player.radius);
+            ctx.lineTo(player.x, player.y + player.radius);
+            ctx.stroke();
+
+            // Center Ring Outlines for high visibility
+            ctx.strokeStyle = '#ffffff'; // White high-contrast glow outline
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius * 0.4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.closePath();
+    
+            requestAnimationFrame(gameLoop);
+        }
+    
+        gameLoop();
+    })();
+</script>
 </body>
 </html>
