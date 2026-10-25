@@ -1,0 +1,1826 @@
+<!DOCTYPE html><html><!--
+
+my grass is better
+
+
+this program was made and directly compiled by my own game engine aka unity ripoff
+
+--><head><meta charset="utf-8"><title>better grass</title></head><body style='margin:0px;overflow:hidden;'><div id='PROGRAM_DIV' style='position:fixed;left:0%;top:0%;right:0%;bottom:0%;background-color:rgb(255,0,0)'></div><script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js'></script><script src='https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js'></script><script type>(function(){window.D=(function(D){
+
+let gl
+
+D.PI=Math.PI
+D.HALF_PI=Math.PI*0.5
+D.QUATER_PI=Math.PI*0.25
+D.THIRD_PI=Math.PI/3
+D.TWO_PI=Math.PI*2
+D.TO_RAD=Math.PI/180
+D.TO_DEG=180/Math.PI
+D.INV_255=1/255
+D.SQRT_2=Math.sqrt(2)
+D.SQRT_HALF=Math.sqrt(0.5)
+D.NEG_X=[-1,0,0]
+D.X=[1,0,0]
+D.NEG_Y=[0,1,0]
+D.Y=[0,1,0]
+D.NEG_Z=[0,0,-1]
+D.Z=[0,0,1]
+D.ORIGIN=[0,0,0]
+D.random=(min,max)=>Math.random()*(max-min)+min
+D.constrain=(x,a,b)=>x<a?a:x>b?b:x
+D.map=(value,istart,istop,ostart,ostop)=>ostart+(ostop-ostart)*((value-istart)/(istop-istart))
+D.lerp=(a,b,x)=>x*(b-a)+a
+D.floatize=(n)=>n-(n|0)>0?n:n+'.'
+D.addCommas=(s)=>{for(let i=s.length-3;i>0;i-=3){s=s.substring(0,i)+','+s.substr(i,s.length)}return s}
+D.doGrammar=(s)=>{let str=s.slice(),_s='';for(let i in str){if(str[i].toUpperCase()===str[i]){_s=_s+' '+str[i]}else{_s=_s+str[i]}}return _s[0].toUpperCase()+_s.substring(1,_s.length)}
+D.doTime=(s)=>(s>=60?((0.0166666667*s)|0)+'m ':'')+(s|0)%60+'s'
+D.doPlural=(s)=>{if(s[s.length-1]==='s'){return s}if(s[s.length-1]==='y'){return s.substr(0,s.length-1)+'ies'}if(s[s.length-1]==='x'){return s+'es'}return s+'s'}
+D.DEFAULT_POST_PROCESSING_VSH=`#version 300 es\nprecision mediump float;in vec2 vertPos;out vec2 pixUV;void main(){pixUV=vertPos*0.5+0.5;gl_Position=vec4(vertPos,0,1);}`
+D.createIdentityMatrix=()=>mat4.identity(new Float32Array(16))
+D.IDENTITY_MATRIX=D.createIdentityMatrix()
+D.ETMPING={top:{x:0,y:0,w:0,h:0},bottom:{x:0,y:0,w:0,h:0},left:{x:0,y:0,w:0,h:0},right:{x:0,y:0,w:0,h:0},front:{x:0,y:0,w:0,h:0},back:{x:0,y:0,w:0,h:0}}
+
+D.getContext=(canv,data={})=>{
+    
+    gl=canv.getContext('webgl2',data)
+    D.gl=gl
+    
+    if(!gl) alert('WebGL2 is not supported!')
+    
+    return gl
+}
+
+D.getExtension=(e)=>{
+    
+    if(!gl.getExtension(e)) alert('WebGL2 extension "'+e+'" is not supported!')
+}
+
+D.clear=(r=0,g=r,b=r,a=1)=>{
+    
+    gl.clearColor(r,g,b,a)
+    gl.clear(16640)
+}
+
+D.viewport=(x,y,w,h)=>{
+    
+    D.viewportWidth=w
+    D.viewportHeight=h
+    D.aspect=w/h
+    gl.viewport(x,y,w,h)
+}
+
+D.createProgram=(vsh_src,fsh_src,debug=false)=>{
+    
+    let vshText=vsh_src.trim(),fshText=fsh_src.trim()
+    
+    vshText=vshText.replaceAll('D_INV_WIDTH',D.floatize(1/D.viewportWidth)).replaceAll('D_INV_HEIGHT',D.floatize(1/D.viewportHeight)).replaceAll('D_WIDTH',D.floatize(D.viewportWidth)).replaceAll('D_HEIGHT',D.floatize(D.viewportHeight)).replaceAll('D_ASPECT',D.floatize(D.aspect))
+    
+    fshText=fshText.replaceAll('D_INV_WIDTH',D.floatize(1/D.viewportWidth)).replaceAll('D_INV_HEIGHT',D.floatize(1/D.viewportHeight)).replaceAll('D_WIDTH',D.floatize(D.viewportWidth)).replaceAll('D_HEIGHT',D.floatize(D.viewportHeight)).replaceAll('D_ASPECT',D.floatize(D.aspect))
+    
+    vsh=gl.createShader(gl.VERTEX_SHADER)
+    fsh=gl.createShader(gl.FRAGMENT_SHADER)
+    gl.shaderSource(vsh,vshText)
+    gl.shaderSource(fsh,fshText)
+    gl.compileShader(vsh)
+    gl.compileShader(fsh)
+    
+    if(debug&&!gl.getShaderParameter(vsh,gl.COMPILE_STATUS))
+        console.error(vshText+" "+gl.getShaderInfoLog(vsh))
+        
+    if(debug&&!gl.getShaderParameter(fsh,gl.COMPILE_STATUS))
+        console.error(fshText+" "+gl.getShaderInfoLog(fsh))
+    
+    let p=gl.createProgram()
+    gl.attachShader(p,vsh)
+    gl.attachShader(p,fsh)
+    gl.linkProgram(p)
+    
+    let locations={},types={},text=vsh_src.trim().split(';')
+    
+    for(let i in text){
+        
+        let words=text[i].trim().split(' ')
+        
+        if(words[0]==='attribute'||words[0]==='in'||words[0]==='uniform'){
+            
+            locations[words[2]]=gl['get'+({in:'Attrib',attribute:'Attrib',uniform:'Uniform'}[words[0]])+'Location'](p,words[2])
+            types[words[2]]=words[1]
+            
+            if(words[0]==='attribute'||words[0]==='in'){
+                
+                gl.enableVertexAttribArray(locations[words[2]])
+            }
+        }
+    }
+    
+    text=fsh_src.trim().split(';')
+    
+    for(let i in text){
+        
+        let words=text[i].trim().split(' ')
+        
+        if(words[0]==='uniform'){
+            
+            words[2]=words[2].substring(0,words[2].indexOf('[')<0?words[2].length:words[2].indexOf('['))
+            
+            locations[words[2]]=gl.getUniformLocation(p,words[2])
+            types[words[2]]=words[1]
+        }
+    }
+    
+    for(let i in types){
+        
+        types[i]={
+            
+            float:'1fv',
+            vec2:'2fv',
+            vec3:'3fv',
+            vec4:'4fv',
+            int:'1iv',
+            ivec2:'2iv',
+            ivec3:'3iv',
+            ivec4:'4iv',
+            sampler2D:'1i',
+            isampler2D:'1i',
+            samplerCube:'1i',
+            mat2:'Matrix2fv',
+            mat3:'Matrix3fv',
+            mat4:'Matrix4fv'
+            
+        }[types[i]]
+    }
+    
+    p={gl:p,locations:locations,uniformTypes:types}
+    
+    D.useProgram(p)
+    
+    return p 
+}
+
+D.setUniform=(name,data)=>{
+    
+    if(D.currentProgram.locations[name])
+        if(D.currentProgram.uniformTypes[name][0]==='M')
+            gl['uniform'+D.currentProgram.uniformTypes[name]](D.currentProgram.locations[name],gl.FALSE,data)
+        else
+            gl['uniform'+D.currentProgram.uniformTypes[name]](D.currentProgram.locations[name],data)
+}
+
+D.useProgram=(program)=>{
+    
+    gl.useProgram(program.gl)
+    D.currentProgram=program
+}
+
+D.createMesh=(data,pointers,instancedPointers,type='STATIC')=>{
+    
+    type=type.toUpperCase()+'_DRAW'
+    
+    let mesh={},pointerStr=''
+    
+    mesh.verts=data.verts
+    mesh.index=data.index
+    mesh.type=type
+    
+    mesh.wireframe=data.wireframe
+    mesh.indexAmount=mesh.index.length
+    mesh.primitive=data.primitive
+    
+    mesh.vertBuffer=gl.createBuffer()
+    mesh.indexBuffer=gl.createBuffer()
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER,mesh.vertBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER,mesh.verts,gl[type])
+    
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.indexBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,mesh.index,gl[type])
+    
+    for(let i in pointers){
+        
+        let p=pointers[i]
+        
+        pointerStr+='gl.vertexAttribPointer(locations["'+p[0]+'"],'+p[1]+',gl.FLOAT,gl.FALSE,'+p[2]+','+p[3]+');'
+        
+    }
+    
+    mesh.attribFunction=Object.constructor('gl','locations',pointerStr)
+    
+    mesh.attribPointers=pointers
+    
+    if(instancedPointers){
+        
+        let i_pointerStr='',clearDivisorsStr=''
+        
+        for(let i in instancedPointers){
+            
+            let p=instancedPointers[i]
+            
+            i_pointerStr+='gl.vertexAttribPointer(locations["'+p[0]+'"],'+p[1]+',gl.FLOAT,gl.FALSE,'+p[2]+','+p[3]+');gl.vertexAttribDivisor(locations["'+p[0]+'"],1);'
+            
+            clearDivisorsStr+='gl.vertexAttribDivisor(locations["'+p[0]+'"],0);'
+            
+        }
+        
+        mesh.instancedAttribFunction=Object.constructor('gl','locations',i_pointerStr)
+        mesh.clearDivisorsFunction=Object.constructor('gl','locations',clearDivisorsStr)
+        
+        mesh.instancedAttribPointers=instancedPointers
+        mesh.instanceData=new Float32Array(1)
+        mesh.instanceSize=instancedPointers[0][2]*0.25
+        
+        mesh.instanceBuffer=gl.createBuffer()
+        
+    }
+    
+    return mesh
+}
+
+D.updateMesh=(mesh,data)=>{
+    
+    if(data){
+        
+        mesh.verts=Float32Array.from(data.verts)
+        mesh.index=Uint32Array.from(data.index)
+        mesh.wireframe=data.wireframe??false
+        mesh.primitive=data.primitive??'TRIANGLES'
+    }
+    
+    mesh.indexAmount=mesh.index.length
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER,mesh.vertBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER,mesh.verts,gl[mesh.type])
+    
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.indexBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,mesh.index,gl[mesh.type])
+}
+
+D.renderMesh=(mesh)=>{
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER,mesh.vertBuffer)
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.indexBuffer)
+    mesh.attribFunction(gl,D.currentProgram.locations)
+    
+    if(mesh.instanceData){
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER,mesh.instanceBuffer)
+        gl.bufferData(gl.ARRAY_BUFFER,mesh.instanceData,gl.DYNAMIC_DRAW)
+    
+        mesh.instancedAttribFunction(gl,D.currentProgram.locations)
+        gl.drawElementsInstanced(gl[mesh.primitive],mesh.indexAmount,gl.UNSIGNED_INT,0,mesh.instanceData.length/mesh.instanceSize)
+        
+        mesh.clearDivisorsFunction(gl,D.currentProgram.locations)
+        
+    } else {
+        
+        gl.drawElements(gl[mesh.primitive],mesh.indexAmount,gl.UNSIGNED_INT,0)
+    }
+}
+
+D.setInstances=(mesh,data)=>{
+    
+    mesh.instanceData=new Float32Array(data)
+}
+
+D.enable3D=()=>{
+    
+    gl.enable(gl.CULL_FACE)
+    gl.cullFace(gl.BACK)
+    gl.enable(gl.DEPTH_TEST)
+    gl.depthFunc(gl.LEQUAL)
+}
+
+D.enable=(t)=>gl.enable(gl[t])
+D.disable=(t)=>gl.disable(gl[t])
+D.cullFace=(t)=>gl.cullFace(gl[t])
+D.depthFunc=(t)=>gl.depthFunc(gl[t])
+D.blendFunc=(t1,t2)=>gl.blendFunc(gl[t1],gl[t2])
+
+D.enableBlend=()=>{
+    
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA)
+}
+
+D.perspectiveMatrix=(fov=80,aspect=D.aspect,zn=0.1,zf=1000)=>{
+    
+    let f=Math.tan(1.57079632679-fov*0.008726646),
+        rangeInv=1/(zn-zf)
+        
+    return new Float32Array([
+        f/aspect,0,0,0,
+        0,f,0,0,
+        0,0,(zn+zf)*rangeInv,-1,
+        0,0,zn*zf*rangeInv*2,0
+    ])
+}
+
+D.setViewMatrix=(mat,proj,x,y,z,yaw,pitch,zoomBack=0)=>{
+    
+    var cp=Math.cos(pitch),sp=Math.sin(pitch),cy=Math.cos(yaw),sy=Math.sin(yaw);
+    
+    mat[5]=cp;
+    mat[6]=sp;
+    mat[9]=-sp;
+    mat[10]=cp;
+    
+    mat[0]=cy;
+    mat[1]=sp*sy;
+    mat[2]=-cp*sy;
+    mat[8]=sy;
+    mat[9]=-sp*cy;
+    mat[10]=cp*cy;
+    
+    var a00=mat[0],
+    a01=mat[1],
+    a02=mat[2],
+    a11=mat[5],
+    a12=mat[6],
+    a20=mat[8],
+    a21=mat[9],
+    a22=mat[10];
+    
+    x+=mat[2]*zoomBack
+    y+=mat[6]*zoomBack
+    z+=mat[10]*zoomBack
+    
+    mat[12]=a00*-x-a20*z;
+    mat[13]=a01*-x-a11*y-a21*z;
+    mat[14]=a02*-x-a12*y-a22*z;
+    mat[15]=1;
+    
+    let m=mat.slice()
+    
+    let d=[mat[2],mat[6],mat[10]]
+    
+    var a00=proj[0],a11=proj[5],a21=proj[9],a22=proj[10],a23=proj[11],a32=proj[14],b0=mat[0],b1=mat[1],b2=mat[2],b3=0;
+    
+    mat[0]=b0*a00;
+    mat[1]=b1*a11+b2*a21;
+    mat[2]=b2*a22+b3*a32;
+    mat[3]=b2*a23;
+    
+    b1=mat[5];
+    b2=mat[6];
+    
+    mat[4]=0;
+    mat[5]=b1*a11;
+    mat[6]=b2*a22;
+    mat[7]=b2*a23;
+    
+    b0=mat[8];
+    b1=mat[9];
+    b2=mat[10];
+    
+    mat[8]=b0*a00;
+    mat[9]=b1*a11+b2*a21;
+    mat[10]=b2*a22;
+    mat[11]=b2*a23;
+    
+    b0=mat[12];
+    b1=mat[13];
+    b2=mat[14];
+    
+    mat[12]=b0*a00;
+    mat[13]=b1*a11+b2*a21;
+    mat[14]=b2*a22+a32;
+    mat[15]=b2*a23;
+    
+    return {camPos:[x,y,z],modelMatrix:m,camDir:d}
+}
+
+D.createTexture=(width=D.viewportWidth,height=D.viewportHeight,data=null,filter='LINEAR',wrap='CLAMP_TO_EDGE',internalFormat='RGBA',format='RGBA',type='UNSIGNED_BYTE',mipmap=false)=>{
+    
+    let t=gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D,t)
+    gl.texImage2D(gl.TEXTURE_2D,0,gl[internalFormat],width,height,0,gl[format],gl[type],data)
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl[filter])
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl[filter])
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl[wrap])
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl[wrap])
+    
+    if(mipmap){
+        
+        gl.generateMipmap(gl.TEXTURE_2D)
+    }
+    
+    return {texture:t,width:width,height:height}
+}
+
+D.bindTexture=(texture)=>gl.bindTexture(gl.TEXTURE_2D,texture===null?null:texture.texture)
+
+D.createFramebuffer=(target=false,depth=false,attachment='COLOR_ATTACHMENT0')=>{
+    
+    let f=gl.createFramebuffer()
+    gl.bindFramebuffer(gl.FRAMEBUFFER,f)
+    
+    if(target)
+        gl.framebufferTexture2D(gl.FRAMEBUFFER,gl[attachment],gl.TEXTURE_2D,target.texture,0)
+    
+    if(depth){
+        
+        if(!target)
+            target={width:D.viewportWidth,height:D.viewportHeight}
+        
+        let depthBuffer=gl.createRenderbuffer()
+        gl.bindRenderbuffer(gl.RENDERBUFFER,depthBuffer)
+        gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,target.width,target.height)
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,depthBuffer)
+        
+    }
+    
+    return f
+}
+
+D.bindFramebuffer=(framebuffer)=>gl.bindFramebuffer(gl.FRAMEBUFFER,framebuffer)
+
+D.drawBuffers=(params)=>{
+    
+    let arr=[]
+    
+    for(let i in params){
+        
+        gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER,gl['COLOR_ATTACHMENT'+i],gl.TEXTURE_2D,params[i].texture,0)
+        
+        arr.push(gl['COLOR_ATTACHMENT'+i])
+    }
+    
+    gl.drawBuffers(arr)
+}
+
+D.activeTextures=(params)=>{
+    
+    for(let i=0;i<params.length;i+=2){
+        
+        gl.activeTexture(gl['TEXTURE'+params[i]])
+        gl.bindTexture(gl.TEXTURE_2D,params[i+1].texture)
+    }
+}
+
+D.createMeshData=(params)=>{
+    
+    let meshKey={x:0,y:1,z:2,u:3,v:4,nx:5,ny:6,nz:7,r:8,g:9,b:10,a:11},meshKeyAmount=0
+    
+    params.defaultData=params.defaultData||[]
+    
+    for(let i=0;i<params.defaultData.length;i++){
+        
+        meshKey['data_'+i]=12+i
+    }
+    
+    for(let i in meshKey){meshKeyAmount++}
+
+    params.vl=params.vl||0
+    
+    let verts=[],index=[]
+    
+    for(let j in params.meshes){
+        
+        let t=params.meshes[j],extraData=t.data||(params.defaultData?params.defaultData:'0'.repeat(params.defaultData.length).split(''))
+        
+        if(extraData.length!==params.defaultData.length)
+            for(let i in params.defaultData)
+                if(extraData[i]===undefined)
+                    extraData[i]=params.defaultData[i]
+        
+        switch(t.type){
+            
+            case 'box':
+                
+                {
+                    let x=t.x||0,
+                        y=t.y||0,
+                        z=t.z||0,
+                        prex=t.prex||0,
+                        prey=t.prey||0,
+                        prez=t.prez||0,
+                        rx=t.rx||0,
+                        ry=t.ry||0,
+                        rz=t.rz||0,
+                        w=t.w||1,
+                        h=t.h||1,
+                        l=t.l||1,
+                        c=[t.r||0,t.g||0,t.b||0,t.a||1],
+                        order=params.order,
+                        vl=params.vl+(verts.length/order.length)
+                        _quat=quat.fromEuler([],rx,ry,rz),
+                        _tex=t.textureMapping||{top:{x:0,y:0,w:1,h:1},bottom:{x:0,y:0,w:1,h:1},left:{x:0,y:0,w:1,h:1},right:{x:0,y:0,w:1,h:1},front:{x:0,y:0,w:1,h:1},back:{x:0,y:0,w:1,h:1}}
+                    
+                    _tex.top.w??=w*(_tex.top.sw||1)
+                    _tex.top.h??=l*(_tex.top.sh||1)
+                    _tex.bottom.w??=w*(_tex.bottom.sw||1)
+                    _tex.bottom.h??=l*(_tex.bottom.sh||1)
+                    _tex.left.w??=l*(_tex.left.sw||1)
+                    _tex.left.h??=h*(_tex.left.sh||1)
+                    _tex.right.w??=l*(_tex.right.sw||1)
+                    _tex.right.h??=h*(_tex.right.sh||1)
+                    _tex.front.w??=w*(_tex.front.sw||1)
+                    _tex.front.h??=h*(_tex.front.sh||1)
+                    _tex.back.w??=w*(_tex.back.sw||1)
+                    _tex.back.h??=h*(_tex.back.sh||1)
+                    
+                    let v=[
+                        
+                        [-0.5*w,0.5*h,-0.5*l],
+                        [-0.5*w,0.5*h,0.5*l],
+                        [0.5*w,0.5*h,0.5*l],
+                        [0.5*w,0.5*h,-0.5*l],
+                        [-0.5*w,-0.5*h,-0.5*l],
+                        [-0.5*w,-0.5*h,0.5*l],
+                        [0.5*w,-0.5*h,0.5*l],
+                        [0.5*w,-0.5*h,-0.5*l],
+                    ],
+                    n=[
+                        
+                        [0,1,0],
+                        [0,0,1],
+                        [0,0,-1],
+                        [1,0,0],
+                        [-1,0,0],
+                        [0,-1,0],
+                    ]
+                    
+                    for(let i in v){
+                        
+                        vec3.add(v[i],v[i],[prex,prey,prez])
+                        
+                        vec3.transformQuat(v[i],v[i],_quat)
+                        
+                        vec3.add(v[i],v[i],[x,y,z])
+                        
+                        if(i<6){
+                            
+                            vec3.transformQuat(n[i],n[i],_quat)
+                        }
+                    }
+                    
+                    let _verts=[
+                        
+                        ...v[0],1*_tex.top.w+_tex.top.x,1*_tex.top.h+_tex.top.y,...n[0],...c,...extraData,
+                        ...v[1],1*_tex.top.w+_tex.top.x,0*_tex.top.h+_tex.top.y,...n[0],...c,...extraData,
+                        ...v[2],0*_tex.top.w+_tex.top.x,0*_tex.top.h+_tex.top.y,...n[0],...c,...extraData,
+                        ...v[3],0*_tex.top.w+_tex.top.x,1*_tex.top.h+_tex.top.y,...n[0],...c,...extraData,
+                        
+                        ...v[1],0*_tex.back.w+_tex.back.x,0*_tex.back.h+_tex.back.y,...n[1],...c,...extraData,
+                        ...v[2],1*_tex.back.w+_tex.back.x,0*_tex.back.h+_tex.back.y,...n[1],...c,...extraData,
+                        ...v[5],0*_tex.back.w+_tex.back.x,1*_tex.back.h+_tex.back.y,...n[1],...c,...extraData,
+                        ...v[6],1*_tex.back.w+_tex.back.x,1*_tex.back.h+_tex.back.y,...n[1],...c,...extraData,
+                        
+                        ...v[0],1*_tex.front.w+_tex.front.x,0*_tex.front.h+_tex.front.y,...n[2],...c,...extraData,
+                        ...v[3],0*_tex.front.w+_tex.front.x,0*_tex.front.h+_tex.front.y,...n[2],...c,...extraData,
+                        ...v[4],1*_tex.front.w+_tex.front.x,1*_tex.front.h+_tex.front.y,...n[2],...c,...extraData,
+                        ...v[7],0*_tex.front.w+_tex.front.x,1*_tex.front.h+_tex.front.y,...n[2],...c,...extraData,
+                        
+                        ...v[2],0*_tex.right.w+_tex.right.x,0*_tex.right.h+_tex.right.y,...n[3],...c,...extraData,
+                        ...v[3],1*_tex.right.w+_tex.right.x,0*_tex.right.h+_tex.right.y,...n[3],...c,...extraData,
+                        ...v[6],0*_tex.right.w+_tex.right.x,1*_tex.right.h+_tex.right.y,...n[3],...c,...extraData,
+                        ...v[7],1*_tex.right.w+_tex.right.x,1*_tex.right.h+_tex.right.y,...n[3],...c,...extraData,
+                        
+                        ...v[0],0*_tex.left.w+_tex.left.x,0*_tex.left.h+_tex.left.y,...n[4],...c,...extraData,
+                        ...v[1],1*_tex.left.w+_tex.left.x,0*_tex.left.h+_tex.left.y,...n[4],...c,...extraData,
+                        ...v[4],0*_tex.left.w+_tex.left.x,1*_tex.left.h+_tex.left.y,...n[4],...c,...extraData,
+                        ...v[5],1*_tex.left.w+_tex.left.x,1*_tex.left.h+_tex.left.y,...n[4],...c,...extraData,
+                        
+                        ...v[4],0*_tex.bottom.w+_tex.bottom.x,1*_tex.bottom.h+_tex.bottom.y,...n[5],...c,...extraData,
+                        ...v[5],0*_tex.bottom.w+_tex.bottom.x,0*_tex.bottom.h+_tex.bottom.y,...n[5],...c,...extraData,
+                        ...v[6],1*_tex.bottom.w+_tex.bottom.x,0*_tex.bottom.h+_tex.bottom.y,...n[5],...c,...extraData,
+                        ...v[7],1*_tex.bottom.w+_tex.bottom.x,1*_tex.bottom.h+_tex.bottom.y,...n[5],...c,...extraData
+                        
+                    ]
+                    
+                    index.push(
+                        
+                        vl,1+vl,2+vl,
+                        vl,2+vl,3+vl,
+                        5+vl,6+vl,7+vl,
+                        6+vl,5+vl,4+vl,
+                        8+vl,9+vl,10+vl,
+                        11+vl,10+vl,9+vl,
+                        14+vl,13+vl,12+vl,
+                        13+vl,14+vl,15+vl,
+                        18+vl,17+vl,16+vl,
+                        17+vl,18+vl,19+vl,
+                        22+vl,21+vl,20+vl,
+                        23+vl,22+vl,20+vl
+                    )
+                    
+                    for(let i=0,l=_verts.length;i<l;i+=meshKeyAmount){
+                        
+                        for(let k in order){
+                            
+                            verts.push(_verts[i+meshKey[order[k]]])
+                        }
+                    }
+                    
+                }
+            
+            break
+            
+            case 'sphere':
+                
+                {
+                    let f=(1+5 ** 0.5)*0.5,
+                        T=4 ** D.constrain(t.detail,0,5),
+                        tex=t.textureMapping||{side:{x:0,y:0,w:1,h:1}}
+                    
+                    let vertices=new Float32Array((10*T+2)*3);
+                    vertices.set(Float32Array.of(
+                    -1,f,0,1,f,0,-1,-f,0,1,-f,0,
+                    0,-1,f,0,1,f,0,-1,-f,0,1,-f,
+                    f,0,-1,f,0,1,-f,0,-1,-f,0,1));
+                    let triangles=Uint32Array.of(
+                    0,11,5,0,5,1,0,1,7,0,7,10,0,10,11,
+                    11,10,2,5,11,4,1,5,9,7,1,8,10,7,6,
+                    3,9,4,3,4,2,3,2,6,3,6,8,3,8,9,
+                    9,8,1,4,9,5,2,4,11,6,2,10,8,6,7);
+                    
+                    let _v=12;
+                    let midCache=D.constrain(t.detail,0,5)?new Map() : null;
+                    
+                    function addMidPoint(a,b) {
+                        let _key=Math.floor((a+b)*(a+b+1)*0.5)+Math.min(a,b);
+                        let i=midCache.get(_key);
+                        if (i !== undefined) { midCache.delete(_key); return i; }
+                        midCache.set(_key,_v);
+                        for (let k=0; k<3; k++)vertices[3*_v+k]=(vertices[3*a+k]+vertices[3*b+k])*0.5;
+                        i=_v++;
+                        return i;
+                    }
+                    
+                    let trianglesPrev=triangles;
+                    for (let i=0; i<D.constrain(t.detail,0,5); i++) {
+                    triangles=new Uint32Array(trianglesPrev.length<<2);
+                    for (let k=0; k<trianglesPrev.length; k+=3) {
+                      let v1=trianglesPrev[k];
+                      let v2=trianglesPrev[k+1];
+                      let v3=trianglesPrev[k+2];
+                      let a=addMidPoint(v1,v2);
+                      let b=addMidPoint(v2,v3);
+                      let c=addMidPoint(v3,v1);
+                      let t=k<<2;
+                      triangles[t++]=v1; triangles[t++]=a; triangles[t++]=c;
+                      triangles[t++]=v2; triangles[t++]=b; triangles[t++]=a;
+                      triangles[t++]=v3; triangles[t++]=c; triangles[t++]=b;
+                      triangles[t++]=a;  triangles[t++]=b; triangles[t++]=c;
+                    }
+                    trianglesPrev=triangles;
+                    }
+                    
+                    let x=t.x||0,
+                        y=t.y||0,
+                        z=t.z||0,
+                        prex=t.prex||0,
+                        prey=t.prey||0,
+                        prez=t.prez||0,
+                        _quat=quat.fromEuler([],t.rx||0,t.ry||0,t.rz||0),normals=[]
+                        
+                    for (let i=0; i<vertices.length; i+=3) {
+                        
+                        let m=1 / Math.hypot(vertices[i],vertices[i+1],vertices[i+2]);
+                        
+                        vertices[i]*=m;
+                        vertices[i+1]*=m;
+                        vertices[i+2]*=m;
+                        
+                        let tq=vec3.transformQuat([],[vertices[i],vertices[i+1],vertices[i+2]],_quat)
+                        
+                        normals[i]=tq[0]
+                        normals[i+1]=tq[1]
+                        normals[i+2]=tq[2]
+                        
+                        vertices[i]=vertices[i]*t.radius+prex
+                        vertices[i+1]=vertices[i+1]*t.radius+prey
+                        vertices[i+2]=vertices[i+2]*t.radius+prez
+                        
+                        tq=vec3.transformQuat([],[vertices[i],vertices[i+1],vertices[i+2]],_quat)
+                        
+                        vertices[i]=tq[0]+x
+                        vertices[i+1]=tq[1]+y
+                        vertices[i+2]=tq[2]+z
+                    }
+                    
+                    for(let i in triangles){
+                        
+                        index.push(triangles[i]+params.vl+(verts.length/params.order.length))
+                        
+                    }
+                    
+                    __verts=[]
+                    
+                    for(let i=0,l=vertices.length;i<l;i+=3){
+                        
+                        __verts.push(vertices[i],vertices[i+1],vertices[i+2],(Math.abs(Math.atan(normals[i]/normals[i+2]))/D.PI)*tex.side.w+tex.side.x,(normals[i+1]*0.5+0.5)*tex.side.h+tex.side.y,normals[i],normals[i+1],normals[i+2],t.r||0,t.g||0,t.b||0,t.a||1,...extraData)
+                    }
+                    
+                    for(let i=0,l=__verts.length;i<l;i+=meshKeyAmount){
+                        
+                        for(let k in params.order){
+                            
+                            verts.push(__verts[i+meshKey[params.order[k]]])
+                        }
+                    }
+                }
+                
+            break
+            
+            case 'plane':
+                
+                {
+                    let x=t.x||0,
+                        y=t.y||0,
+                        z=t.z||0,
+                        c=[t.r||0,t.g||0,t.b||0,t.a||1],
+                        order=params.order,
+                        vl=params.vl+(verts.length/order.length),
+                        _quat=quat.fromEuler([],t.rx||0,t.ry||0,t.rz||0),
+                        s=t.size,
+                        tex=t.textureMapping||{side:{x:0,y:0,w:1,h:1}}
+                    
+                    let v=[
+                        
+                        [-0.5*s,0,-0.5*s],
+                        [-0.5*s,0,0.5*s],
+                        [0.5*s,0,0.5*s],
+                        [0.5*s,0,-0.5*s]
+                        
+                    ],n=[0,1,0]
+                    
+                    vec3.transformQuat(n,n,_quat)
+                    
+                    for(let i in v){
+                        
+                        vec3.transformQuat(v[i],v[i],_quat)
+                        
+                        vec3.add(v[i],v[i],[x,y,z])
+                    }
+                    
+                    let _verts=[
+                        
+                        ...v[0],1*tex.side.w+tex.side.x,1*tex.side.h+tex.side.y,...n,...c,...extraData,
+                        ...v[1],1*tex.side.w+tex.side.x,0*tex.side.h+tex.side.y,...n,...c,...extraData,
+                        ...v[2],0*tex.side.w+tex.side.x,0*tex.side.h+tex.side.y,...n,...c,...extraData,
+                        ...v[3],0*tex.side.w+tex.side.x,1*tex.side.h+tex.side.y,...n,...c,...extraData
+                    ]
+                    
+                    index.push(
+                        
+                        vl,1+vl,2+vl,
+                        vl,2+vl,3+vl
+                    )
+                    
+                    for(let i=0,l=_verts.length;i<l;i+=meshKeyAmount){
+                        
+                        for(let k in order){
+                            
+                            verts.push(_verts[i+meshKey[order[k]]])
+                        }
+                    }
+                    
+                }
+            
+            break
+            
+            case 'cylinder':
+                
+                {
+                    let x=t.x||0,
+                        y=t.y||0,
+                        z=t.z||0,
+                        rx=t.rx||0,
+                        ry=t.ry||0,
+                        rz=t.rz||0,
+                        rad=t.radius,
+                        rad2=t.radius2??t.radius,
+                        detail=t.detail,
+                        hei=t.height,
+                        r=t.r||0,
+                        g=t.g||0,
+                        b=t.b||0,
+                        a=t.a||1,
+                        order=params.order,
+                        vl=params.vl+(verts.length/order.length),
+                        _quat=quat.fromEuler([],rx,ry,rz),
+                        __verts=[],
+                        _index=[],
+                        tex=t.textureMapping||{top:{x:0,y:0,w:1,h:1},side:{x:0,y:0,w:1,h:1},bottom:{x:0,y:0,w:1,h:1}}
+                    
+                    for(let _t=0,inc=D.TWO_PI/detail;_t<=D.TWO_PI;_t+=inc){
+                        
+                        let t1=_t-inc*0.5,t2=_t+inc*0.5
+                        __verts.push(
+                            Math.cos(t1)*rad,Math.sin(t1)*rad,hei*0.5,(1.0-(t1/D.TWO_PI))*tex.side.w+tex.side.x,1*tex.side.h+tex.side.y,Math.cos(t1),Math.sin(t1),0,r,g,b,a,...extraData,
+                            Math.cos(t1)*rad2,Math.sin(t1)*rad2,-hei*0.5,(1.0-(t1/D.TWO_PI))*tex.side.w+tex.side.x,0*tex.side.h+tex.side.y,Math.cos(t1),Math.sin(t1),0,r,g,b,a,...extraData,
+                            Math.cos(t2)*rad,Math.sin(t2)*rad,hei*0.5,(1.0-(t2/D.TWO_PI))*tex.side.w+tex.side.x,1*tex.side.h+tex.side.y,Math.cos(t2),Math.sin(t2),0,r,g,b,a,...extraData,
+                            Math.cos(t2)*rad2,Math.sin(t2)*rad2,-hei*0.5,(1.0-(t2/D.TWO_PI))*tex.side.w+tex.side.x,0*tex.side.h+tex.side.y,Math.cos(t2),Math.sin(t2),0,r,g,b,a,...extraData)
+                        
+                        let _vl=__verts.length/meshKeyAmount
+                        _index.push(_vl,_vl+1,_vl+2,_vl+3,_vl+2,_vl+1)
+                    }
+                    
+                    let _v=__verts.length/meshKeyAmount
+                    
+                    for(let _t=0,inc=D.TWO_PI/detail;_t<=D.TWO_PI;_t+=inc){
+                        
+                        let t1=_t-inc*0.5,t2=_t+inc*0.5
+                        __verts.push(
+                            Math.cos(t1)*rad,Math.sin(t1)*rad,hei*0.5,(Math.cos(t1)*0.5+0.5)*tex.bottom.w+tex.bottom.x,-(Math.sin(t1)*0.5+0.5)*tex.bottom.h+tex.bottom.y,0,0,1,r,g,b,a,...extraData,
+                            Math.cos(t2)*rad,Math.sin(t2)*rad,hei*0.5,(Math.cos(t2)*0.5+0.5)*tex.bottom.w+tex.bottom.x,-(Math.sin(t2)*0.5+0.5)*tex.bottom.h+tex.bottom.y,0,0,1,r,g,b,a,...extraData)
+                    }
+                    for(let l=__verts.length/meshKeyAmount,i=_v;i<l-1;i++){
+                        
+                        _index.push(_v,i,i+2)
+                    }
+                    _v=__verts.length/meshKeyAmount
+                    for(let _t=0,inc=D.TWO_PI/detail;_t<=D.TWO_PI;_t+=inc){
+                        
+                        let t1=_t-inc*0.5,t2=_t+inc*0.5
+                        __verts.push(
+                            
+                            Math.cos(t1)*rad2,Math.sin(t1)*rad2,-hei*0.5,(Math.cos(t1)*0.5+0.5)*tex.top.w+tex.top.x,(Math.sin(t1)*0.5+0.5)*tex.top.h+tex.top.y,0,0,-1,r,g,b,a,...extraData,
+                            Math.cos(t2)*rad2,Math.sin(t2)*rad2,-hei*0.5,(Math.cos(t2)*0.5+0.5)*tex.top.w+tex.top.x,(Math.sin(t2)*0.5+0.5)*tex.top.h+tex.top.y,0,0,-1,r,g,b,a,...extraData)
+                    }
+                    for(let l=__verts.length/meshKeyAmount,i=_v;i<l;i++){
+                        
+                        _index.push(i,i-1,_v)
+                    }
+                    
+                    for(let i in _index){
+                        
+                        index.push(_index[i]+vl)
+                    }
+                    
+                    for(let i=0;i<__verts.length;i+=meshKeyAmount){
+                        
+                            let rotated=vec3.transformQuat([],[__verts[i],__verts[i+1],__verts[i+2]],_quat)
+                            __verts[i]=rotated[0]+x
+                            __verts[i+1]=rotated[1]+y
+                            __verts[i+2]=rotated[2]+z
+                            
+                            rotated=vec3.transformQuat(rotated,[__verts[i+5],__verts[i+6],__verts[i+7]],_quat)
+                            
+                            __verts[i+5]=rotated[0]
+                            __verts[i+6]=rotated[1]
+                            __verts[i+7]=rotated[2]
+                            
+                    }
+                    
+                    for(let i=0,l=__verts.length;i<l;i+=meshKeyAmount){
+                        
+                        for(let k in params.order){
+                            
+                            verts.push(__verts[i+meshKey[params.order[k]]])
+                        }
+                    }
+                }
+                
+            break
+            
+            case 'hemisphere':
+                
+                {
+                    let f=(1+5 ** 0.5)*0.5,
+                        T=4 ** D.constrain(t.detail,0,5),
+                        tex=t.textureMapping||{side:{x:0,y:0,w:1,h:1},top:{x:0,y:0,w:1,h:1}}
+                    
+                    let vertices=new Float32Array((10*T+2)*3);
+                    vertices.set(Float32Array.of(
+                    -1,f,0,1,f,0,-1,-f,0,1,-f,0,
+                    0,-1,f,0,1,f,0,-1,-f,0,1,-f,
+                    f,0,-1,f,0,1,-f,0,-1,-f,0,1));
+                    let triangles=Uint32Array.of(
+                    0,11,5,0,5,1,0,1,7,0,7,10,0,10,11,
+                    11,10,2,5,11,4,1,5,9,7,1,8,10,7,6,
+                    3,9,4,3,4,2,3,2,6,3,6,8,3,8,9,
+                    9,8,1,4,9,5,2,4,11,6,2,10,8,6,7);
+                    
+                    let _v=12;
+                    let midCache=D.constrain(t.detail,0,5)?new Map() : null;
+                    
+                    function addMidPoint(a,b) {
+                        let _key=Math.floor((a+b)*(a+b+1)*0.5)+Math.min(a,b);
+                        let i=midCache.get(_key);
+                        if (i !== undefined) { midCache.delete(_key); return i; }
+                        midCache.set(_key,_v);
+                        for (let k=0; k<3; k++)vertices[3*_v+k]=(vertices[3*a+k]+vertices[3*b+k])*0.5;
+                        i=_v++;
+                        return i;
+                    }
+                    
+                    let trianglesPrev=triangles;
+                    for (let i=0; i<D.constrain(t.detail,0,5); i++) {
+                    triangles=new Uint32Array(trianglesPrev.length<<2);
+                    for (let k=0; k<trianglesPrev.length; k+=3) {
+                      let v1=trianglesPrev[k];
+                      let v2=trianglesPrev[k+1];
+                      let v3=trianglesPrev[k+2];
+                      let a=addMidPoint(v1,v2);
+                      let b=addMidPoint(v2,v3);
+                      let c=addMidPoint(v3,v1);
+                      let t=k<<2;
+                      triangles[t++]=v1; triangles[t++]=a; triangles[t++]=c;
+                      triangles[t++]=v2; triangles[t++]=b; triangles[t++]=a;
+                      triangles[t++]=v3; triangles[t++]=c; triangles[t++]=b;
+                      triangles[t++]=a;  triangles[t++]=b; triangles[t++]=c;
+                    }
+                    trianglesPrev=triangles;
+                    }
+                    
+                    for (let i=0; i<vertices.length; i+=3) {
+                        let m=1 / Math.hypot(vertices[i],vertices[i+1],vertices[i+2]);
+                        vertices[i]*=m;
+                        vertices[i+1]*=m;
+                        vertices[i+2]*=m;
+                    }
+                    
+                    let VERTS=[],INDEX=[]
+                    
+                    for(let i in triangles){
+                        
+                        INDEX.push(triangles[i]+params.vl+(verts.length/params.order.length))
+                        
+                    }
+                    
+                    let rad=t.radius
+                    
+                    for(let i=0,l=vertices.length;i<l;i+=3){
+                        
+                        if(vertices[i+1]<0){
+                            
+                            VERTS.push(vertices[i]*rad+t.x,vertices[i+1]*rad+t.y,vertices[i+2]*rad+t.z,(-Math.acos(vertices[i])/D.PI)*tex.side.w+tex.side.x,(-vertices[i+1]*0.5+0.5)*tex.side.h+tex.side.y,vertices[i],vertices[i+1],vertices[i+2],t.r||0,t.g||0,t.b||0,t.a||1,...extraData)
+                        } else {
+                            
+                            VERTS.push(vertices[i]*rad+t.x,t.y,vertices[i+2]*rad+t.z,(vertices[i]*0.5+0.5)*tex.top.w+tex.top.x,(vertices[i+2]*0.5+0.5)*tex.top.h+tex.top.y,0,1,0,t.r||0,t.g||0,t.b||0,t.a||1,...extraData)
+                        }
+                    }
+                    
+                    let surfaceVerts=
+                    
+                    index.push(...INDEX)
+                    
+                    for(let i=0,l=VERTS.length;i<l;i+=meshKeyAmount){
+                        
+                        for(let k in params.order){
+                            
+                            verts.push(VERTS[i+meshKey[params.order[k]]])
+                        }
+                    }
+                }
+                
+            break
+            
+            case 'obj':
+                
+                {
+                    let obj=D.createOBJMeshData({
+                        
+                        obj:t.obj,
+                        order:params.order,
+                        color:t.r===undefined?undefined:[t.r,t.g,t.b,t.a===undefined?1:t.a],
+                        defaultData:params.defaultData,
+                        data:t.data,
+                        ignoreUVs:t.ignoreUVs===undefined?true:t.ignoreUVs,
+                        vl:params.vl+(verts.length/params.order.length),
+                        transformations:{x:t.x,y:t.y,z:t.z,prex:t.prex,prey:t.prey,prez:t.prez,rx:t.rx,ry:t.ry,rz:t.rz,sx:t.sx,sy:t.sy,sz:t.sz}
+                    })
+                    
+                    verts.push(...obj.verts)
+                    index.push(...obj.index)
+                }
+            
+            break
+        }
+    }
+    
+    let _index=[]
+    
+    if(params.wireframe){
+        
+        for(let i=0,l=index.length;i<l;i+=3){
+            
+            _index.push(index[i],index[i+1],index[i+1],index[i+2],index[i+2],index[i])
+            
+        }
+        
+        return {verts:Float32Array.from(verts),index:Uint32Array.from(_index),primitive:'LINES'}
+    }
+    
+    return {verts:Float32Array.from(verts),index:Uint32Array.from(index),primitive:params.primitive||'TRIANGLES'}
+}
+
+D.createOBJMeshData=(params)=>{
+    
+    let meshKey={x:0,y:1,z:2,u:3,v:4,nx:5,ny:6,nz:7,r:8,g:9,b:10,a:11},meshKeyAmount=0
+    
+    params.defaultData=params.defaultData||[]
+    
+    for(let i=0;i<params.defaultData.length;i++){
+        
+        meshKey['data_'+i]=12+i
+    }
+    
+    for(let i in meshKey){meshKeyAmount++}
+    
+    params.vl=params.vl||0
+    
+    let _verts=[],index=[],pos=[],uv=[],normal=[],color=[],mtl={},currentmtl,faces=[],order=params.order,extraData=params.data||'0'.repeat(params.defaultData.length).split('')
+    
+    if(extraData.length!==params.defaultData.length)
+            for(let i in params.defaultData)
+                if(extraData[i]===undefined)
+                    extraData[i]=params.defaultData[i]
+    
+    let obj=params.obj.trim().split('\n')
+    
+    for(let i in obj){
+        
+        obj[i]=obj[i].trim()
+        
+        let type=obj[i].split(' ')[0],data=[],s=obj[i].substring(obj[i].indexOf(' ')+1,obj[i].length).split(' ')
+        
+        for(let j in s){
+            
+            if(s[j].indexOf('/')<0){
+                
+                if(type.indexOf('mtl')>-1){
+                    
+                    data.push(s[j])
+                    
+                } else {
+                    
+                    data.push(Number(s[j]))
+                }
+                
+            }
+        }
+        
+        switch(type){
+            
+            case 'newmtl':
+            case 'usemtl':
+                
+                currentmtl=data.join('_')
+                
+            break
+            
+            case 'Kd':
+                
+                mtl[currentmtl]=data.length===4?data:[...data,1]
+                
+            break
+            
+            case 'v':
+                
+                pos.push(data)
+                color.push(mtl[currentmtl])
+            break
+            
+            case 'vt':
+                
+                uv.push(data)
+                
+            break
+            
+            case 'vn':
+                
+                normal.push(data)
+                
+            break
+            
+            case 'f':
+                
+                for(let j in s){
+                    
+                    s[j]=s[j].split('/')
+                }
+                
+                faces.push(s)
+                
+            break
+            
+        }
+        
+    }
+    
+    params.transformations=params.transformations||{}
+    
+    let pre=[params.transformations.prex||0,params.transformations.prey||0,params.transformations.prez||0],_quat=quat.fromEuler([],params.transformations.rx||0,params.transformations.ry||0,params.transformations.rz||0),tr=[params.transformations.x||0,params.transformations.y||0,params.transformations.z||0],sca=[params.transformations.sx||1,params.transformations.sy||1,params.transformations.sz||1]
+    
+    for(let i in pos){
+        
+        vec3.add(pos[i],pos[i],pre)
+        vec3.mul(pos[i],pos[i],sca)
+        vec3.transformQuat(pos[i],pos[i],_quat)
+        
+        vec3.add(pos[i],pos[i],tr)
+    }
+    
+    for(let i in normal){
+        
+        vec3.transformQuat(normal[i],normal[i],_quat)
+    }
+    
+    for(let i in faces){
+        
+        let v=[],vt=[],vn=[],vl=(_verts.length/meshKeyAmount)+params.vl,count=0
+        
+        for(let j in faces[i]){
+            
+            let f=faces[i][j]
+            
+            count++
+            _verts.push(...pos[f[0]-1],...(params.ignoreUVs?typeof params.ignoreUVs==='boolean'?[0,0]:params.ignoreUVs:uv[f[1]-1]),...normal[f[2]-1],...(params.color?params.color:color[f[0]-1]),...extraData)
+        }
+        
+        for(let i=0;i<count-1;i++){
+            
+            index.push(vl,i+vl,i+vl+1)
+        }
+    }
+    
+    let verts=[]
+    
+    for(let i=0;i<_verts.length;i+=meshKeyAmount){
+        
+        for(let k in order){
+            
+            verts.push(_verts[i+meshKey[order[k]]])
+        }
+    }
+    
+    if(params.wireframe){
+        
+        let _index=[]
+        
+        for(let i=0,l=index.length;i<l;i+=3){
+            
+            _index.push(index[i],index[i+1],index[i+1],index[i+2],index[i+2],index[i])
+            
+        }
+        
+        return {verts:Float32Array.from(verts),index:Uint32Array.from(_index),wireframe:true,primitive:'LINES'}
+    }
+    
+    return {verts:Float32Array.from(verts),index:Uint32Array.from(index),primitive:params.primitive||'TRIANGLES'}
+}
+
+for(let i in D)D[i[0].toUpperCase()+i.substring(1,i.length)]=D[i]
+
+return D
+
+})({})})()</script><script type>setTimeout(()=>{PROGRAM_DIV.width=innerWidth;PROGRAM_DIV.height=innerHeight;(function(div){
+        try{
+        
+        let canvas=document.createElement('canvas')
+        canvas.width=div.width
+        canvas.height=div.height
+        div.appendChild(canvas)
+        let Data={"_pipeline":[{"type":"UpdatePhysics"},{"type":"ComputeTransformations"},{"type":"RenderShadowMaps"},{"type":"MainRender","output":""},{"type":"RenderSkybox"}],"_settings":{"timeMultiplier":1,"minDeltaTime":0,"maxDeltaTime":0.25,"gravity":[0,-9.81,0],"quatNormalizeSkip":0,"quatNormalizeFast":false,"defaultFriction":0.35,"defaultRestitution":0.05,"dynamicLightsInfo":{"position":true,"rotation":true,"intensity":true,"color":true,"innerCone":true,"outerCone":true,"diffuseRemapScale":true,"diffuseRemapAdd":true},"textureDrawingCanvasWidth":1024,"textureDrawingCanvasHeight":1024,"vertexDataAttributesInShadowMappingProgram":0},"_assets":{"BasicMaterial":{"type":"material","specularExponent":100,"specularIntensity":0.75,"extraDataFormat":"[]","vertexData":{"position":true,"normal":true,"color":true,"uv":true},"texture":"","normalMap":"","instancedDataFormat":"[]","recieveShadows":true,"recieveShadowsFrom":"[]"},"GrassMaterial":{"type":"material","specularExponent":100,"specularIntensity":0.75,"extraDataFormat":"[1]","vertexData":{"position":true,"normal":false,"color":false,"uv":false},"texture":"","normalMap":"","instancedDataFormat":"[]","recieveShadows":true,"recieveShadowsFrom":"[]","script":"GrassShader"},"CameraController":{"type":"script","lang":"js","code":"let yaw=0,pitch=0,keys={}\n\nExport.OnCreate = function(This, Engine){\n \n Engine.canvas.onmousedown=()=>Engine.canvas.requestPointerLock()\n \n Engine.canvas.onmousemove=(e)=>{\n \n yaw-=e.movementX*0.3\n pitch=D.constrain(pitch-e.movementY*0.3,-90,90)\n \n This.transform.rotation=quat.fromEuler(This.transform.rotation,pitch,yaw,0)\n }\n \n document.onkeydown=(e)=>keys[e.key.toLowerCase()]=1\n document.onkeyup=(e)=>keys[e.key.toLowerCase()]=0\n}\n\nExport.OnUpdate = function(This, Engine){\n \n let dt=Engine.deltaTime*5,s=Math.sin(yaw*D.TO_RAD),c=Math.cos(yaw*D.TO_RAD)\n \n if(keys.w){\n This.transform.position[0]-=dt*s\n This.transform.position[2]-=dt*c\n }\n if(keys.a){\n This.transform.position[0]-=dt*c\n This.transform.position[2]+=dt*s\n }\n if(keys.d){\n This.transform.position[0]+=dt*c\n This.transform.position[2]-=dt*s\n }\n if(keys.s){\n This.transform.position[0]+=dt*s\n This.transform.position[2]+=dt*c\n }\n if(keys[' '])\n This.transform.position[1]+=dt\n if(keys.shift)\n This.transform.position[1]-=dt\n}\n\nExport.OnDelete = function(This, Engine){\n \n \n}"},"GrassMeshGenerator":{"type":"script","lang":"js","code":"Export.OnCreate = function(This, Engine){\n \n let verts=[],index=[],inv_20=(1/20)\n \n for(let x=-22;x<=22;x+=0.1)\n for(let z=-22;z<=22;z+=0.1){\n \n let prob=Math.sqrt(x*x+z*z)*inv_20\n \n if(Math.random()>prob){\n \n let d=[Math.random()-0.5,Math.random()-0.5],off=[D.random(-0.25,0.25)+x,D.random(-0.25,0.25)+z],vl=verts.length>>2,top=Math.random()*Math.random()*0.6+D.random(0.6,0.6)\n vec2.normalize(d,d)\n vec2.scale(d,d,0.06)\n verts.push(off[0],top,off[1],top,off[0]+d[0],0,off[1]+d[1],0,off[0]-d[0],0,off[1]-d[1],0)\n index.push(vl,vl+1,vl+2,vl+2,vl+1,vl)\n }\n }\n \n D.UpdateMesh(This.mesh,{\n verts:verts,\n index:index\n })\n}\n\nExport.OnUpdate = function(This, Engine){\n \n \n}\n\nExport.OnDelete = function(This, Engine){\n \n \n}"},"GrassShader":{"type":"script","lang":"glsl","code":"@ VertexShader {\n \n #version 300 es\n precision mediump float;\n \n HARDCODED_VERTEX_ATTRIBUTES\n HARDCODED_INSTANCED_ATTRIBUTES\n \n uniform mat4 modelMatrix;\n uniform mat4 viewMatrix;\n uniform float time;\n \n out vec3 pixColor;\n \n void main(){\n \n \n float theta=time+vertPos.x*24.515-vertPos.z*515.521;\n float rad=sin(time-58.28*vertPos.x)*0.1;\n vec3 wind=normalize(vec3(cos(time*-0.2),0,1))*((cos(time*3.0+vertPos.x*-25.624+vertPos.z*259.42)+1.0)*0.25+0.65)*(sin(time*0.25)*0.4+0.6);\n vec3 tip=vec3(sin(theta)*rad,0,cos(theta)*rad)+wind;\n \n vec4 pos=modelMatrix*vec4(vertPos+tip*vertData_0*vertData_0,1);\n \n pixColor=mix(vec3(0.1,0.4,0.1),vec3(0.4,0.8,0.25),vertData_0);\n \n gl_Position=viewMatrix*pos;\n }\n}\n\n@ FragmentShader {\n \n #version 300 es\n precision mediump float;\n \n in vec3 pixColor;\n \n HARDCODED_UNIFORMS\n \n out vec4 FragColor;\n \n void main(){\n \n FragColor=vec4(pixColor,1);\n }\n}"}},"_hierarchy":{"Camera":{"type":"camera","clearColor":[0,0,0,1],"transform":{"position":[3,2,3],"rotation":[-20,45,0],"scale":[1,1,1]},"computeTransformations":true,"projectionType":"perspective","FOV":60,"near":0.01,"far":1000,"script":"CameraController"},"Ground":{"type":"mesh","material":"BasicMaterial","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"computeTransformations":false,"render":true,"wireframe":false,"castShadows":true,"castShadowsTo":"[]","defaultData":"[]","physics":{"usePhysics":false,"type":"STATIC","mass":0,"collisionGroup":0,"collisionMask":"[]","fixedRotation":false},"children":{"G":{"type":"geometry","render":true,"data":{"type":"cylinder","x":0,"y":0,"z":0,"w":100,"h":0.001,"l":100,"radius":22,"radius2":22,"height":0.001,"detail":35,"r":0.2,"g":0.9,"b":0.2,"rx":-90,"ry":0,"rz":0,"data":"[]"},"physics":{"usePhysics":false,"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}}}},"GrassMesh":{"type":"mesh","material":"GrassMaterial","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"computeTransformations":false,"render":true,"castShadows":true,"castShadowsTo":"[]","defaultData":"[1]","physics":{"usePhysics":false,"type":"DYNAMIC","mass":1,"collisionGroup":0,"collisionMask":"[]","fixedRotation":false},"script":"GrassMeshGenerator","wireframe":false},"Light":{"type":"light","lightType":"ambient","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"computeTransformations":false,"dynamic":false,"intensity":0.6,"color":[1,1,1],"attenuationPolynomial":"X*X","innerCone":-1,"outerCone":-1,"diffuseRemapScale":1,"diffuseRemapAdd":0,"illuminates":true,"illuminatesMaterials":"[]"}}},Engine={data:Data,deltaTime:0,time:0,then:0,timeMultiplier:Data._settings.timeMultiplier*0.001,maxDeltaTime:Data._settings.maxDeltaTime,minDeltaTime:Data._settings.minDeltaTime,width:canvas.width-0,height:canvas.height-0,aspect:(canvas.width-0)/(canvas.height-0),uniformedPrograms:{},canvas:canvas,div:div,physics:new CANNON.World(),cachedPowersOf2:[1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864,134217728,268435456,536870912,1073741824,2147483648]},AllObjects,Materials={},Scripts={},Textures={},Meshes,Lights_static,Lights_dynamic,Shadowers,Pipeline=Data._pipeline,arrayParse=(s)=>typeof s==='object'?s:s.substring(1,s.length-1).split(',').map(x=>x.length?isNaN(Number(x))?x:Number(x):undefined).filter(x=>x!==undefined),dynamicLightInfoAmount=0,dynamicLightUniformArray
+        Engine.texCanvas=new OffscreenCanvas(Data._settings.textureDrawingCanvasWidth,Data._settings.textureDrawingCanvasHeight)
+        Engine.texCTX=Engine.texCanvas.getContext('2d')
+        
+        Engine.physics.broadphase=new CANNON.SAPBroadphase(Engine.physics)
+        Engine.physics.broadphase.useBoundingBoxes=true
+        Engine.physics.gravity.set(...Data._settings.gravity)
+        Engine.physics.solver=new CANNON.GSSolver()
+        Engine.physics.quatNormalizeSkip=Data._settings.quatNormalizeSkip
+        Engine.physics.quatNormalizeFast=Data._settings.quatNormalizeFast
+        Engine.physics.defaultContactMaterial.friction=Data._settings.defaultFriction
+        Engine.physics.defaultContactMaterial.restitution=Data._settings.defaultRestitution
+        
+        Engine.noiseProperties={
+            hashSeed:0,
+            octaves:5,
+            decay:0.5,
+            upscale:2
+        }
+        Engine.Hash_2=(x,y)=>{
+            let n=(x*60.51+y*49.521-(40.517*x*y*20.610)+Engine.noiseProperties.hashSeed)*(x+y)
+            return n-Math.floor(n)
+        }
+        Engine.Smoothstep=(a,b,t)=>{
+            return (b-a)*t*t*(3-(t+t))+a
+        }
+        Engine.Noise2D_base=(x,y)=>{
+            let _x=Math.floor(x),_y=Math.floor(y),lt=Engine.Hash_2(_x,_y),lb=Engine.Hash_2(_x,_y+1),rt=Engine.Hash_2(_x+1,_y),rb=Engine.Hash_2(_x+1,_y+1),l=Engine.Smoothstep(lt,lb,y-_y),r=Engine.Smoothstep(rt,rb,y-_y)
+            return Engine.Smoothstep(l,r,x-_x)
+        }
+        Engine.Noise2D=(x,y)=>{
+            let n=0,d=1,u=1,_x=x,_y=y
+            for(let i=0;i<Engine.noiseProperties.octaves;i++){
+                n+=(Engine.Noise2D_base(_x,_y)+Engine.Noise2D_base(_y*0.707107-_x*0.707107+20,_y*0.707107+_x*0.707107+20)+Engine.Noise2D_base(_y*-0.707107+_x*0.707107+40,_y*-0.707107-_x*0.707107+40))*d
+                d*=Engine.noiseProperties.decay
+                _x*=Engine.noiseProperties.upscale
+                _y*=Engine.noiseProperties.upscale
+            }
+            return n/(Engine.noiseProperties.octaves*3)
+        }
+        
+        Engine.gl=D.getContext(canvas,{preserveDrawingBuffer:true})
+        D.viewport(0,0,Engine.width,Engine.height)
+        D.enable3D()
+        
+        Engine.materials=Materials
+        Engine.pipeline=Pipeline
+        Engine.scripts=Scripts
+        
+        for(let i in Data._settings.dynamicLightsInfo)if(Data._settings.dynamicLightsInfo[i])dynamicLightInfoAmount+={position:3,rotation:3,color:3}[i]||1
+        
+        for(let i in Data._assets){
+            let s=Data._assets[i]
+            if(s.type==='script'){
+                Scripts[i]={}
+                if(s.lang==='js'){
+                    let c=Object.constructor('This','Engine','let Export={};'+s.code+'\nreturn Export')(),nothing=()=>0
+                    Scripts[i].onCreate=c.OnCreate||nothing
+                    Scripts[i].onUpdate=c.OnUpdate||nothing
+                    Scripts[i].onDelete=c.OnDelete||nothing
+                    Scripts[i].getTexture=c.GetTexture||nothing
+                }else{
+                    let c=s.code.trim().split('@')
+                    for(let j in c){
+                        let cj=(c[j]=c[j].trim()).substring(c[j].indexOf('{')+1,c[j].length-1),test=c[j].substring(0,c[j].indexOf('{'))
+                        if(test.indexOf('VertexShader')>-1)
+                            Scripts[i].vsh=cj
+                        else if(test.indexOf('FragmentShader')>-1)
+                            Scripts[i].fsh=cj
+                    }
+                }
+            }else if(s.type==='renderTarget'){
+                s.tex=D.createTexture(Math.ceil(s.resType==='define'?s.width:Engine.width*s.width),Math.ceil(s.resType==='define'?s.height:Engine.height*s.height))
+                s.fb=D.createFramebuffer(s.tex,s.depthBuffer)
+            }else if(s.type==='texture') Textures[i]=s
+        }
+        let lastParent,amountOfShadowers=0,recurse=function(o){
+            for(let i in o){
+                switch(o[i].type){
+                    case 'mesh':
+                        if(o[i].physics.usePhysics){
+                            let p=o[i].physics,mask=1
+                            p.collisionMask=arrayParse(p.collisionMask)
+                            for(let i in p.collisionMask)mask|=Engine.cachedPowersOf2[p.collisionMask[i]]
+                            p.body=new CANNON.Body({
+                                fixedRotation:p.fixedRotation,
+                                position:new CANNON.Vec3(...o[i].transform.position),
+                                quaternion:new CANNON.Quaternion(...quat.fromEuler([],...o[i].transform.rotation)),
+                                mass:p.mass,
+                                collisionFilterGroup:Engine.cachedPowersOf2[p.collisionGroup],
+                                collisionFilterMask:mask,
+                                type:CANNON.Body[p.type]
+                            })
+                        }
+                        Meshes[i]=o[i]
+                        Meshes[i].data=[]
+                    break
+                    case 'geometry':
+                    break
+                    case 'camera':
+                        Engine.camera=o[i]
+                    break
+                    case 'shadower':
+                        Shadowers[i]=o[i]
+                        Shadowers[i].meshes=[]
+                        amountOfShadowers++
+                    break
+                    case 'light':
+                        if(o[i].dynamic)Lights_dynamic[i]=o[i];else Lights_static[i]=o[i]
+                    break
+                }
+                if(Data._hierarchy[i])lastParent=undefined
+                o[i].parent=lastParent
+                o[i].name=i
+                if(o[i].type!=='geometry')AllObjects[i]=o[i]
+                if(o[i].children){
+                    lastParent=o[i]
+                    recurse(o[i].children)
+                }
+            }
+        }
+        Engine.RecompileHierarchy=()=>{
+            
+            AllObjects={}
+            Meshes={}
+            Lights_static={}
+            Lights_dynamic={}
+            Shadowers={}
+            
+            recurse(Data._hierarchy)
+            
+            dynamicLightUniformArray=0
+            for(let i in Lights_dynamic)
+                dynamicLightUniformArray+=dynamicLightInfoAmount
+            Engine.dynamicLightsAmount=dynamicLightUniformArray
+            dynamicLightUniformArray=new Float32Array(dynamicLightUniformArray)
+            
+            Engine.allObjects=AllObjects
+            Engine.meshes=Meshes
+            Engine.lights_static=Lights_static
+            Engine.lights_dynamic=Lights_dynamic
+            Engine.shadowers=Shadowers
+        }
+        Engine.RecompileHierarchy()
+        
+        Engine.shadowMapProgram=D.createProgram(`#version 300 es
+                precision mediump float;
+in vec3 vertPos;
+in vec3 vertNormal;
+in vec3 vertColor;
+in vec2 vertUV;${(function(){let s='';for(let i=0;i<0;i++)s+='in float vertData_'+i+';';return s})()}
+uniform mat4 modelMatrix;
+uniform mat4 viewMatrix;
+                void main(){
+                    gl_Position=viewMatrix*modelMatrix*vec4(vertPos,1);
+                }`,`#version 300 es
+                precision mediump float;
+out vec4 FragColor;
+                
+                void main(){
+                    FragColor=vec4(0,0,0,1);
+                }`,1)
+        
+        for(let i in Pipeline){
+            let p=Pipeline[i]
+            switch(p.type){
+                case 'RenderSkybox':
+                    Engine.skyboxProgram=p.script?D.createProgram(Scripts[p.script].vsh,Scripts[p.script].fsh,1):D.createProgram(`
+#version 300 es
+precision mediump float;
+
+in vec2 vertPos;
+
+uniform mat4 viewMatrix;
+
+out vec3 pixDir;
+
+void main(){
+    
+    pixDir=inverse(mat3(viewMatrix))*vec3(vertPos,1);
+    gl_Position=vec4(vertPos,1,1);
+}`,`
+#version 300 es
+precision mediump float;
+
+in vec3 pixDir;
+
+out vec4 FragColor;
+
+void main(){
+    
+    vec3 dir=normalize(pixDir);
+    FragColor=vec4(mix(vec3(0.25,0.25,0.25),vec3(0.5,0.8,1),smoothstep(-0.1,0.0,dir.y)),1);
+}`,1)
+                        
+                    p.run=function(){
+                        D.useProgram(Engine.skyboxProgram)
+                        D.setUniform('viewMatrix',Engine.camera.transform.viewMatrix)
+                        D.renderMesh(screenMesh)
+                    }
+                break
+                case 'RenderShadowMaps':
+                    p.run=renderShadowMaps
+                break
+                case 'ComputeTransformations':
+                    p.run=computeTransformations
+                break
+                case 'UpdatePhysics':
+                    p.run=()=>Engine.physics.step(Engine.deltaTime)
+                break
+                case 'MainRender':
+                    Engine.mainRenderOutputFB=Data._assets[p.output]?Data._assets[p.output].fb:null
+                    p.run=MainRender
+                break
+                case 'PostProcessor':
+                    let texArr=[],out=p.output?Data._assets[p.output].fb:null
+                    if(out)D.viewport(0,0,Data._assets[p.output].tex.width,Data._assets[p.output].tex.height);else D.viewport(0,0,Engine.width,Engine.height)
+                    p.program=D.createProgram(Scripts[p.script].vsh,Scripts[p.script].fsh,1)
+                    p.inputs=arrayParse(p.inputs)
+                    for(let i in p.inputs){
+                        texArr.push(i,Data._assets[p.inputs[i]].tex)
+                        D.setUniform('input_'+i,i)
+                    }
+                    p.run=()=>{
+                        D.useProgram(p.program)
+                        D.bindFramebuffer(out)
+                        if(out)D.viewport(0,0,Data._assets[p.output].tex.width,Data._assets[p.output].tex.height);else D.viewport(0,0,Engine.width,Engine.height)
+                        D.activeTextures(texArr)
+                        D.renderMesh(screenMesh)
+                    }
+                break
+            }
+        }
+        
+        let screenMesh=D.createMesh(D.createMeshData({meshes:[{type:'plane',x:0,y:0,z:0,size:2,r:0,g:0,b:0,rx:90,ry:0,rz:0}],order:['x','y']}),[['vertPos',2,8,0]]),data=null
+        
+        function InitalizeTexture(m){
+            
+            if(m.script)data=Scripts[m.script].getTexture(Engine.texCTX,Engine)
+            m.texture=D.createTexture(m.width,m.height,data,m.filtering,m.wrapping,m.internalFormat,m.format,m.memoryType,m.mipmapping)
+        }
+        
+        for(let i in Textures)InitalizeTexture(Textures[i])
+        
+        function InitalizeMaterial(m){
+            Materials[m.name]=m
+            m.shadowers=[]
+            m.activeTexturesArr=[]
+            m.recieveShadowsFrom=arrayParse(m.recieveShadowsFrom)
+            m.extraDataFormat=arrayParse(m.extraDataFormat)
+            m.instancedDataFormat=arrayParse(m.instancedDataFormat)
+            let c=0,sc
+            if(m.texture.length)
+                m.activeTexturesArr.push(c++,Data._assets[m.texture].texture)
+            if(m.normalMap.length)
+                m.activeTexturesArr.push(c++,Data._assets[m.normalMap].texture)
+            sc=c
+            for(let i in Shadowers)
+                if(m.recieveShadows||m.recieveShadowsFrom.indexOf(i)>-1){
+                    m.shadowers.push(Shadowers[i])
+                    m.activeTexturesArr.push(c++,Shadowers[i].tex)
+                }
+            
+            let hardcode=(s)=>s.replaceAll('HARDCODED_VERTEX_ATTRIBUTES',(function(){
+                    let s=''
+                    
+                    if(m.vertexData.position)s+='in vec3 vertPos;'
+                    if(m.vertexData.normal)s+='in vec3 vertNormal;'
+                    if(m.vertexData.color)s+='in vec3 vertColor;'
+                    if(m.vertexData.uv)s+='in vec2 vertUV;'
+                    
+                    for(let i in m.extraDataFormat){
+                        let d=m.extraDataFormat[i]-0
+                        s+='in '+['','float','vec2','vec3','vec4'][d]+' vertData_'+i+';'
+                    }
+                return s
+                })()).replaceAll('HARDCODED_INSTANCED_ATTRIBUTES',(function(){
+                    let s='',attribs=[],offset=0
+                    for(let i in m.instancedDataFormat){
+                        let d=m.instancedDataFormat[i]-0
+                        s+='in '+['','float','vec2','vec3','vec4'][d]+' instanceData_'+i+';'
+                        attribs.push(['instanceData_'+i,d,0,offset])
+                        offset+=d<<2
+                    }
+                    for(let i in attribs){
+                        attribs[i][2]=offset
+                    }
+                    m.instancedAttribs=attribs.length?attribs:0
+                    return s
+                })()).replaceAll('HARDCODED_UNIFORMS',(m.texture.length?'uniform sampler2D diffuseTexture;':'')+(m.normalMap.length?'uniform sampler2D normalTexture;':'')+(function(){
+                    let s='',DLIL=0
+                    for(let i in Lights_dynamic){
+                        let l=Lights_dynamic[i]
+                        
+                        l.illuminatesMaterials=arrayParse(l.illuminatesMaterials)
+                        if(l.illuminates||l.illuminatesMaterials.indexOf(m.name)>-1)DLIL+=dynamicLightInfoAmount
+                        
+                    }
+                    s+=DLIL?'uniform float dynamicLightInfoArray['+DLIL+'];':''
+                    for(let i in m.shadowers)
+                        s+='uniform sampler2D shadowTexture_'+i+';'
+                    return s
+                })()).replaceAll('HARDCODED_SPECULAR_EXPONENT',D.floatize(m.specularExponent)).replaceAll('HARDCODED_SPECULAR_INTENSITY',D.floatize(m.specularIntensity)).replaceAll('HARDCODED_STATIC_LIGHT_COMPUTATIONS',(function(){
+                    let s=''
+                    for(let i in Lights_static){
+                        let l=Lights_static[i]
+                        if(!l.illuminates&&l.illuminatesMaterials.indexOf(m.name)<0)continue
+                        switch(l.lightType){
+                            case 'ambient':
+                                s+='color+=applyAmbientLight(pix,vec3('+l.color.join(',')+'),'+D.floatize(l.intensity)+');'
+                            break
+                            case 'directional':
+                                s+='color+=applyDirectionalLight(pix,normal,vec3('+l.transform.direction.join(',')+'),vec3('+l.color.join(',')+'),'+D.floatize(l.intensity)+','+D.floatize(l.diffuseRemapScale)+','+D.floatize(l.diffuseRemapAdd)+');'
+                            break
+                            case 'point':
+                                s+='vec3 _'+i+'toLight=vec3('+l.transform.position.join(',')+')-pixPos;float _'+i+'x=length(_'+i+'toLight);_'+i+'toLight/=_'+i+'x;color+=applyPointLight(_'+i+'toLight,'+l.attenuationPolynomial.trim().replaceAll('X','_'+i+'x')+',pix,normal,vec3('+l.transform.direction.join(',')+'),vec3('+l.color.join(',')+'),'+D.floatize(l.intensity)+','+D.floatize(l.innerCone)+','+D.floatize(l.outerCone)+','+D.floatize(l.diffuseRemapScale)+','+D.floatize(l.diffuseRemapAdd)+');'
+                            break
+                        }
+                    }
+                    return s
+                })()).replaceAll('HARDCODED_DYNAMIC_LIGHT_COMPUTATIONS',(function(){
+                    let s='',index=0,key=Data._settings.dynamicLightsInfo,DLIA='dynamicLightInfoArray'
+                    for(let i in Lights_dynamic){
+                        let l=Lights_dynamic[i],id=index
+                        l.index=index
+                        index+=dynamicLightInfoAmount
+                        if(!l.illuminates&&l.illuminatesMaterials.indexOf(m.name)<0)continue
+                        
+                        let POS=key.position?DLIA+'['+(id++)+'],'+DLIA+'['+(id++)+'],'+DLIA+'['+(id++)+']':l.transform.position.join(','),
+                            ROT=key.rotation?DLIA+'['+(id++)+'],'+DLIA+'['+(id++)+'],'+DLIA+'['+(id++)+']':l.transform.direction.join(','),
+                            INS=key.intensity?DLIA+'['+(id++)+']':D.floatize(l.intensity),
+                            COL=key.color?DLIA+'['+(id++)+'],'+DLIA+'['+(id++)+'],'+DLIA+'['+(id++)+']':l.transform.color.join(','),
+                            IC=key.innerCone?DLIA+'['+(id++)+']':D.floatize(l.innerCone),
+                            OC=key.outerCone?DLIA+'['+(id++)+']':D.floatize(l.outerCone),
+                            DRS=key.diffuseRemapScale?DLIA+'['+(id++)+']':D.floatize(l.diffuseRemapScale),
+                            DRA=key.diffuseRemapAdd?DLIA+'['+(id++)+']':D.floatize(l.diffuseRemapAdd)
+                        
+                        switch(l.lightType){
+                            case 'ambient':
+                                s+='color+=applyAmbientLight(pix,vec3('+COL+'),'+INS+');'
+                            break
+                            case 'directional':
+                                s+='color+=applyDirectionalLight(pix,normal,vec3('+ROT+'),vec3('+COL+'),'+INS+','+DRS+','+DRA+');'
+                            break
+                            case 'point':
+                                s+='vec3 _'+i+'toLight=vec3('+POS+')-pixPos;float _'+i+'x=length(_'+i+'toLight);_'+i+'toLight/=_'+i+'x;color+=applyPointLight(_'+i+'toLight,'+l.attenuationPolynomial.trim().replaceAll('X','_'+i+'x')+',pix,normal,vec3('+ROT+'),vec3('+COL+'),'+INS+','+IC+','+OC+','+DRS+','+DRA+');'
+                            break
+                        }
+                    }
+                return s})()).replaceAll('HARDCODED_TEXTURE_MAP_COMPUTATIONS',(()=>m.texture.length?'vec4 _texSample=texture(diffuseTexture,uv);pix=mix(pix,_texSample.rgb,_texSample.a);':'')()).replaceAll('HARDCODED_NORMAL_MAP_COMPUTATIONS',(()=>m.normalMap.length?'vec3 _tan=cross(normal,vec3(0,0.9999999,0.0000001));vec3 _bitan=cross(normal,_tan);mat3 _tbn=mat3(_tan,_bitan,normal);normal=_tbn*(texture(normalTexture,uv).rgb*2.0-1.0);':'')()).replaceAll('HARDCODED_SHADOW_COMPUTATIONS',(()=>{
+                    let s=''
+                    for(let i in m.shadowers){
+                        let l=m.shadowers[i]
+                        s+='shadow*=applyShadow(shadowTexture_'+i+',mat4('+l.transform.viewMatrix.join(',')+'),vec3('+l.transform.matrix.slice(12,15).join(',')+'),normal,'+(l.blurSamples|0)+','+D.floatize(l.blurRadius/(l.blurSamples||1))+','+D.floatize(l.intensity/((l.blurSamples*2+1)*(l.blurSamples*2+1)))+','+D.floatize(l.biasScale)+','+D.floatize(l.biasAdd)+');'}
+                    return s
+                })())
+            
+            m.program=m.script?D.createProgram(hardcode(Scripts[m.script].vsh),hardcode(Scripts[m.script].fsh),1):D.createProgram(hardcode(`
+#version 300 es
+precision mediump float;
+
+HARDCODED_VERTEX_ATTRIBUTES
+HARDCODED_INSTANCED_ATTRIBUTES
+
+uniform mat4 modelMatrix;
+uniform mat4 viewMatrix;
+out vec3 pixPos;
+out vec3 pixNormal;
+out vec3 pixColor;
+out vec2 pixUV;
+
+void main(){
+    
+    vec4 pos=modelMatrix*vec4(vertPos,1);
+    
+    pixPos=pos.xyz;
+    pixNormal=mat3(modelMatrix)*vertNormal;
+    pixColor=vertColor;
+    pixUV=vertUV;
+    gl_Position=viewMatrix*pos;
+    
+}`),hardcode(`
+#version 300 es
+precision mediump float;
+
+in vec3 pixPos;
+in vec3 pixNormal;
+in vec3 pixColor;
+in vec2 pixUV;
+    
+uniform vec3 camPos;
+
+HARDCODED_UNIFORMS
+
+out vec4 FragColor;
+
+vec3 applyAmbientLight(vec3 pix,vec3 col,float inst){
+    return pix*col*inst;
+}
+vec3 applyDirectionalLight(vec3 pix,vec3 normal,vec3 dir,vec3 col,float inst,float diffuseRemapScale,float diffuseRemapAdd){
+    float diffuse=max(dot(-dir,normal)*diffuseRemapScale+diffuseRemapAdd,0.0);
+    vec3 toLight=dir;
+    float specular=pow(max(dot(normalize(-dir+normalize(camPos-pixPos)),normal),0.0),HARDCODED_SPECULAR_EXPONENT);
+    return (diffuse*pix+specular*HARDCODED_SPECULAR_INTENSITY)*inst*col;
+}
+vec3 applyPointLight(vec3 toLight,float x,vec3 pix,vec3 normal,vec3 dir,vec3 col,float inst,float innerCone,float outerCone,float diffuseRemapScale,float diffuseRemapAdd){
+    float diffuse=max(dot(toLight,normal)*diffuseRemapScale+diffuseRemapAdd,0.0);
+    float specular=pow(max(dot(normalize(toLight+normalize(camPos-pixPos)),normal),0.0),HARDCODED_SPECULAR_EXPONENT);
+    
+    float conal=smoothstep(outerCone,innerCone,dot(toLight,-dir));
+    return (diffuse*pix+specular*HARDCODED_SPECULAR_INTENSITY)*conal*inst*col/x;
+}
+float applyShadow(sampler2D tex,mat4 mat,vec3 pos,vec3 normal,int blurSamples,float blurRadius,float inst,float biasScale,float biasAdd){
+    
+    vec4 proj=mat*vec4(pixPos,1);
+    proj.xyz/=proj.w;
+    proj.xyz=proj.xyz*0.5+0.5;
+    
+    float currentDepth=proj.z-max((0.5-dot(normalize(pos-pixPos),normal))*biasScale,biasAdd);
+    float shadow=1.0;
+    
+    for(int y=-blurSamples;y<=blurSamples;y++){
+        for(int x=-blurSamples;x<=blurSamples;x++){
+            float projDepth=texture(tex,proj.xy+vec2(x,y)*blurRadius).r;
+            if(projDepth<=currentDepth)
+                shadow-=inst;
+        }
+    }
+    if(proj.z>1.0||proj.x<0.0||proj.x>1.0||proj.y<0.0||proj.y>1.0) shadow=1.0;
+    return shadow;
+}
+
+void main(){
+    
+    float shadow=1.0;
+    vec2 uv=pixUV;
+    vec3 normal=normalize(pixNormal);
+    vec3 color=vec3(0);
+    vec3 pix=pixColor;
+    
+    HARDCODED_TEXTURE_MAP_COMPUTATIONS
+    
+    HARDCODED_SHADOW_COMPUTATIONS
+    
+    HARDCODED_NORMAL_MAP_COMPUTATIONS
+    
+    HARDCODED_STATIC_LIGHT_COMPUTATIONS
+    HARDCODED_DYNAMIC_LIGHT_COMPUTATIONS
+    
+    FragColor=vec4(color*shadow,1);
+}`),1)
+            D.activeTextures(m.activeTexturesArr)
+            for(let i in m.shadowers)
+                D.setUniform('shadowTexture_'+i,(i-0)+sc)
+            if(m.texture)D.setUniform('diffuseTexture',0)
+            if(m.normalMap)D.setUniform('normalTexture',m.texture?1:0)
+        }
+        
+        function InitalizeMesh(m){
+            m.shadowers=[]
+            m.castShadowsTo=arrayParse(m.castShadowsTo)
+            for(let i in Shadowers){
+                if(m.castShadows||m.castShadowsTo.indexOf(i)>-1){
+                    Shadowers[i].meshes.push(m)
+                    m.shadowers.push(Shadowers[i])
+                }
+            }
+            for(let i in m.children){
+                let o=m.children
+                if(o[i].type!=='geometry')continue
+                
+                if(m.physics.usePhysics&&o[i].physics.usePhysics){
+                    let p=o[i].physics,a=new CANNON.Vec3(...vec3.add([],p.position,[o[i].data.x,o[i].data.y,o[i].data.z])),b=new CANNON.Quaternion(...quat.fromEuler([],...vec3.add([],p.rotation,[o[i].data.rx||0,o[i].data.ry||0,(o[i].data.rz||0)+(o[i].data.type==='cylinder'?180/o[i].data.detail:0)])))
+                    switch(o[i].data.type){
+                        case 'box':m.physics.body.addShape(new CANNON.Box(new CANNON.Vec3(Math.abs(o[i].data.w*0.5*p.scale[0]),Math.abs(o[i].data.h*0.5*p.scale[1]),Math.abs(o[i].data.l*0.5*p.scale[2]))),a,b)
+                        break
+                        case 'sphere':m.physics.body.addShape(new CANNON.Sphere(Math.abs(o[i].data.radius*p.scale[0])),a,b)
+                        break
+                        case 'cylinder':m.physics.body.addShape(new CANNON.Cylinder(Math.abs(o[i].data.radius*p.scale[0]),Math.abs(o[i].data.radius2*p.scale[0]),Math.abs(o[i].data.height*p.scale[1]),o[i].data.detail),a,b)
+                        break
+                    }
+                }
+                if(o[i].render){
+                    o[i].data.data=arrayParse(o[i].data.data)
+                    m.data.push(o[i].data)
+                }
+            }
+            let order=[],offset=0,mat=Materials[m.material]
+            if(mat.vertexData.position)order.push('x','y','z')
+            if(mat.vertexData.normal)order.push('nx','ny','nz')
+            if(mat.vertexData.color)order.push('r','g','b')
+            if(mat.vertexData.uv)order.push('u','v')
+            
+            for(let i=0,_i=0;i<mat.extraDataFormat.length;i++){
+                for(let j=0;j<mat.extraDataFormat[i]-0;j++){
+                    order.push('data_'+(_i++))
+                }
+            }
+            
+            let stride=order.length<<2,vertData=[],extraAttribs=[]
+            
+            if(mat.vertexData.position){vertData.push(['vertPos',3,stride,offset]);offset+=12}
+            if(mat.vertexData.normal){vertData.push(['vertNormal',3,stride,offset]);offset+=12}
+            if(mat.vertexData.color){vertData.push(['vertColor',3,stride,offset]);offset+=12}
+            if(mat.vertexData.uv){vertData.push(['vertUV',2,stride,offset]);offset+=8}
+            
+            for(let i in mat.extraDataFormat){
+                let d=mat.extraDataFormat[i]-0
+                vertData.push(['vertData_'+i,d,stride,offset])
+                offset+=d<<2
+            }
+            
+            m.defaultData=arrayParse(m.defaultData)
+            m.mesh=D.createMesh(D.createMeshData({meshes:m.data,order:order,defaultData:m.defaultData,wireframe:m.wireframe}),[...vertData],mat.instancedAttribs)
+            if(m.physics.usePhysics){
+                Engine.physics.removeBody(m.physics.body)
+                Engine.physics.addBody(m.physics.body)
+            }
+        }
+        function InitalizeInfo(o){
+            o.transform={localMatrix:D.createIdentityMatrix(),matrix:D.createIdentityMatrix(),position:o.transform.position,rotation:quat.fromEuler([],...o.transform.rotation),scale:o.transform.scale}
+            if(o.type==='camera'||o.type==='shadower'){
+                
+                o.computeProjectionMatrix=()=>o.transform.projectionMatrix=(o.projectionType==='orthographic'?mat4.ortho(D.createIdentityMatrix(),-o.FOV*Engine.aspect,o.FOV*Engine.aspect,-o.FOV/Engine.aspect,o.FOV/Engine.aspect,o.near,o.far):D.perspectiveMatrix(o.FOV,o.type==='camera'?Engine.aspect:o.width/o.height,o.near,o.far))
+                o.computeProjectionMatrix()
+                
+                o.transform.viewMatrix=D.createIdentityMatrix()
+                
+                if(o.type==='shadower'){
+                    o.tex=D.createTexture(o.width,o.height,null,'NEAREST','CLAMP_TO_EDGE','DEPTH_COMPONENT32F','DEPTH_COMPONENT','FLOAT')
+                    o.fb=D.createFramebuffer(o.tex,false,'DEPTH_ATTACHMENT')
+                }
+            }else if(o.type==='light')o.transform.direction=[0,0,-1]
+        }
+        
+        canvas.onresize=function(){
+            Engine.width=canvas.clientWidth
+            Engine.height=canvas.clientHeight
+            Engine.camera.computeProjectionMatrix()
+            D.viewport(0,0,Engine.width,Engine.height)
+        }
+        
+        D.bindFramebuffer(null)
+        
+        function computeTransformations(is1stFrame){
+            for(let i in AllObjects){
+                let o=AllObjects[i],ot=o.transform
+                if(o.script&&!is1stFrame) Scripts[o.script].onUpdate(o,Engine)
+                
+                if(!o.computeTransformations&&!is1stFrame)continue
+                if(o.physics&&o.physics.usePhysics){
+                    let b=o.physics.body
+                    b.quaternion.normalize()
+                    ot.position[0]=b.position.x
+                    ot.position[1]=b.position.y
+                    ot.position[2]=b.position.z
+                    ot.rotation[0]=b.quaternion.x
+                    ot.rotation[1]=b.quaternion.y
+                    ot.rotation[2]=b.quaternion.z
+                    ot.rotation[3]=b.quaternion.w
+                }
+                mat4.fromRotationTranslationScale(ot.localMatrix,ot.rotation,ot.position,ot.scale)
+                
+                if(o.parent)mat4.multiply(ot.matrix,o.parent.transform.matrix,ot.localMatrix);else mat4.copy(ot.matrix,ot.localMatrix)
+                
+                if(o.type==='camera'||o.type==='shadower'){
+                    
+                    mat4.multiply(ot.viewMatrix,ot.projectionMatrix,mat4.invert(ot.localMatrix,ot.matrix))
+                    
+                }else if(o.type==='light'){
+                    
+                    vec3.transformQuat(ot.direction,D.NEG_Z,ot.rotation)
+                    // never-nesters fear me
+                    if(o.dynamic){let idx=o.index;dynamicLightUniformArray[idx++]=ot.position[0];dynamicLightUniformArray[idx++]=ot.position[1];dynamicLightUniformArray[idx++]=ot.position[2];dynamicLightUniformArray[idx++]=ot.direction[0];dynamicLightUniformArray[idx++]=ot.direction[1];dynamicLightUniformArray[idx++]=ot.direction[2];dynamicLightUniformArray[idx++]=o.intensity;dynamicLightUniformArray[idx++]=o.color[0];dynamicLightUniformArray[idx++]=o.color[1];dynamicLightUniformArray[idx++]=o.color[2];dynamicLightUniformArray[idx++]=o.innerCone;dynamicLightUniformArray[idx++]=o.outerCone;dynamicLightUniformArray[idx++]=o.diffuseRemapScale;dynamicLightUniformArray[idx++]=o.diffuseRemapAdd;}
+                }
+            }
+        }
+        function renderShadowMaps(is1stFrame){
+            if(amountOfShadowers){
+                D.useProgram(Engine.shadowMapProgram)
+                for(let i in Shadowers){
+                    let sha=Shadowers[i]
+                    if(!sha.computeShadowMap&&!is1stFrame)continue
+                    D.bindFramebuffer(sha.fb)
+                    D.clear(0,0,0,1)
+                    D.viewport(0,0,sha.width,sha.height)
+                    D.setUniform('viewMatrix',sha.transform.viewMatrix)
+                    for(let j in sha.meshes){
+                        let mes=sha.meshes[j]
+                        D.setUniform('modelMatrix',mes.transform.matrix)
+                        D.renderMesh(mes.mesh)
+                    }
+                }
+                D.viewport(0,0,Engine.width,Engine.height)
+            }
+        }
+        function MainRender(){
+            D.bindFramebuffer(Engine.mainRenderOutputFB)
+            
+            D.clear(...Engine.camera.clearColor)
+            
+            Engine.uniformedPrograms={}
+            Engine.lastUsedProgram=0
+            for(let i in Meshes){
+                if(!Meshes[i].render) continue
+                if(Engine.lastUsedProgram!==Meshes[i].material){
+                    Engine.lastUsedProgram=Meshes[i].material
+                    D.useProgram(Materials[Meshes[i].material].program)
+                    if(!Engine.uniformedPrograms[Meshes[i].material]){
+                        Engine.uniformedPrograms[Meshes[i].material]=true
+                        D.setUniform('viewMatrix',Engine.camera.transform.viewMatrix)
+                        D.setUniform('camPos',Engine.camera.transform.matrix.slice(12,15))
+                        D.setUniform('time',[Engine.time])
+                        if(Engine.dynamicLightsAmount)
+                            D.setUniform('dynamicLightInfoArray',dynamicLightUniformArray)
+                        D.activeTextures(Materials[Meshes[i].material].activeTexturesArr)
+                    }
+                }
+                D.setUniform('modelMatrix',Meshes[i].transform.matrix)
+                D.renderMesh(Meshes[i].mesh)
+            }
+        }
+        
+        for(let i in AllObjects)InitalizeInfo(AllObjects[i])
+        computeTransformations(true)
+        
+        for(let i in Data._assets)
+            if(Data._assets[i].type==='material'){
+                Data._assets[i].name=i
+                InitalizeMaterial(Data._assets[i])
+            }
+            
+        for(let i in Meshes)InitalizeMesh(Meshes[i])
+        
+        for(let i in AllObjects)if(AllObjects[i].script)Scripts[AllObjects[i].script].onCreate(AllObjects[i],Engine)
+        
+        renderShadowMaps(true)
+        function LOOP(now){
+            Engine.time+=(Engine.deltaTime=Math.max(Math.min((now-Engine.then)*Engine.timeMultiplier,Engine.maxDeltaTime),Engine.minDeltaTime))
+            
+            for(let i in Pipeline)
+                Pipeline[i].run()
+            
+            window.parent.raf=window.requestAnimationFrame(LOOP)
+            Engine.then=now
+        }
+        if(window.parent.raf)window.cancelAnimationFrame(window.parent.raf)
+        Engine.then=window.performance.now()
+        LOOP(Engine.then)
+        
+    }catch(e){console.error(e)}})(PROGRAM_DIV)},0)</script></body></html>
