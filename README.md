@@ -24,7 +24,7 @@ Hey there! I'm Grayson and welcome to my awesome website repository! I am super 
 
 ## 💻 Tech Stack & Languages I'm Learning
 
-I used **HTML5**, **CSS3**, and **JavaScript** to build this site (look out for the dropdown menu built entirely with native `<details>` tags!). 
+I used **HTML5**, **CSS3**, and **JavaScript** to build this site with HTML. 
 
 I am also experimenting with and learning these languages for future projects:
 *   🐍 **Python** (for scripting and bots)
