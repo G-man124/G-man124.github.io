@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Play Store</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f8f9fa;
+    color: #202124;
+}
+
+/* HEADER */
+header {
+    height: 72px;
+    background: white;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 0 30px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #34a853;
+    white-space: nowrap;
+}
+
+.logo span {
+    color: #4285f4;
+}
+
+.search {
+    flex: 1;
+    max-width: 650px;
+}
+
+.search input {
+    width: 100%;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 30px;
+    background: #f1f3f4;
+    font-size: 16px;
+    outline: none;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.header-button {
+    border: none;
+    border-radius: 22px;
+    padding: 11px 16px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.login-button {
+    background: #e8f0fe;
+    color: #1967d2;
+}
+
+.signup-button {
+    background: #1a73e8;
+    color: white;
+}
+
+.logout-button {
+    background: #fce8e6;
+    color: #c5221f;
+}
+
+.upload-button {
+    background: #34a853;
+    color: white;
+}
+
+.header-button:hover {
+    opacity: .85;
+}
+
+/* LAYOUT */
+.layout {
+    display: flex;
+    min-height: calc(100vh - 72px);
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 230px;
+    background: white;
+    border-right: 1px solid #ddd;
+    padding: 25px 15px;
+}
+
+.sidebar button {
+    display: block;
+    width: 100%;
+    padding: 14px 18px;
+    margin-bottom: 7px;
+    border: none;
+    background: transparent;
+    border-radius: 25px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.sidebar button:hover,
+.sidebar button.active {
+    background: #e8f0fe;
+    color: #1967d2;
+    font-weight: bold;
+}
+
+/* CONTENT */
+main {
+    flex: 1;
+    padding: 35px;
+    max-width: 1400px;
+}
+
+.hero {
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: white;
+    padding: 45px;
+    border-radius: 25px;
+    margin-bottom: 35px;
+}
+
+.hero h1 {
+    font-size: 38px;
+    margin-bottom: 12px;
+}
+
+.hero p {
+    font-size: 17px;
+    opacity: .9;
+}
+
+.user-message {
+    background: #e8f0fe;
+    color: #1967d2;
+    padding: 14px 18px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    display: none;
+}
+
+/* APP GRID */
+.section-title {
+    margin-bottom: 20px;
+    font-size: 25px;
+}
+
+.app-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.app-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 18px;
+    padding: 18px;
+    transition: .2s;
+}
+
+.app-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 7px 20px rgba(0,0,0,.10);
+}
+
+.app-icon {
+    width: 75px;
+    height: 75px;
+    border-radius: 18px;
+    object-fit: cover;
+    background: #eee;
+    margin-bottom: 15px;
+}
+
+.app-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.app-developer {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.app-description {
+    color: #555;
+    font-size: 13px;
+    line-height: 1.4;
+    min-height: 38px;
+    margin-bottom: 10px;
+}
+
+.app-category {
+    display: inline-block;
+    background: #f1f3f4;
+    color: #555;
+    padding: 5px 9px;
+    border-radius: 12px;
+    font-size: 11px;
+    margin-bottom: 12px;
+}
+
+.app-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.download,
+.delete {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.download {
+    background: #1a73e8;
+    color: white;
+}
+
+.download:hover {
+    background: #1557b0;
+}
+
+.delete {
+    background: #fce8e6;
+    color: #c5221f;
+}
+
+.delete:hover {
+    background: #f8d7d5;
+}
+
+.owner-label {
+    color: #34a853;
+    font-size: 12px;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.empty {
+    text-align: center;
+    padding: 50px;
+    color: #777;
+}
+
+/* MODALS */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.modal-box {
+    width: 90%;
+    max-width: 550px;
+    background: white;
+    border-radius: 22px;
+    padding: 30px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-box h2 {
+    margin-bottom: 20px;
+}
+
+.close {
+    float: right;
+    border: none;
+    background: transparent;
+    font-size: 25px;
+    cursor: pointer;
+}
+
+.form-group {
+    margin-bottom: 17px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    font-size: 15px;
+}
+
+.form-group textarea {
+    height: 100px;
+    resize: vertical;
+}
+
+.submit {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 25px;
+    background: #34a853;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.submit:hover {
+    background: #278a43;
+}
+
+.switch-auth {
+    text-align: center;
+    margin-top: 15px;
+    color: #666;
+}
+
+.switch-auth button {
+    border: none;
+    background: none;
+    color: #1a73e8;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* RESPONSIVE */
+@media(max-width: 900px) {
+    .header-buttons .upload-button {
+        display: none;
+    }
+}
+
+@media(max-width: 700px) {
+    header {
+        padding: 0 12px;
+        gap: 10px;
+    }
+
+    .logo {
+        font-size: 18px;
+    }
+
+    .search {
+        max-width: none;
+    }
+
+    .header-button {
+        padding: 9px;
+        font-size: 11px;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    main {
+        padding: 18px;
+    }
+
+    .hero {
+        padding: 30px;
+    }
+
+    .hero h1 {
+        font-size: 28px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+
+    <div class="logo">
+        <span>▶</span> Web Store
+    </div>
+
+    <div class="search">
+        <input
+            type="text"
+            id="search"
+            placeholder="Search apps..."
+            oninput="renderApps()"
+        >
+    </div>
+
+    <div class="header-buttons">
+
+        <button
+            id="loginButton"
+            class="header-button login-button"
+            onclick="openLogin()">
+            Login
+        </button>
+
+        <button
+            id="signupButton"
+            class="header-button signup-button"
+            onclick="openSignup()">
+            Sign Up
+        </button>
+
+        <button
+            id="logoutButton"
+            class="header-button logout-button"
+            onclick="logout()"
+            style="display:none;">
+            Logout
+        </button>
+
+        <button
+            class="header-button upload-button"
+            onclick="openUpload()">
+            + Upload
+        </button>
+
+    </div>
+
+</header>
+
+
+<div class="layout">
+
+    <aside class="sidebar">
+
+        <button class="active" onclick="filterCategory('All', this)">
+            🏠 Home
+        </button>
+
+        <button onclick="filterCategory('Games', this)">
+            🎮 Games
+        </button>
+
+        <button onclick="filterCategory('Education', this)">
+            📚 Education
+        </button>
+
+        <button onclick="filterCategory('Productivity', this)">
+            💼 Productivity
+        </button>
+
+        <button onclick="filterCategory('Entertainment', this)">
+            🎬 Entertainment
+        </button>
+
+        <button onclick="filterCategory('Other', this)">
+            📱 Other
+        </button>
+
+    </aside>
+
+
+    <main>
+
+        <section class="hero">
+
+            <h1>Discover great apps</h1>
+
+            <p>
+                Find, upload and download apps from your own app marketplace.
+            </p>
+
+        </section>
+
+        <div id="userMessage" class="user-message"></div>
+
+        <h2 class="section-title">Apps</h2>
+
+        <div id="appGrid" class="app-grid"></div>
+
+    </main>
+
+</div>
+
+
+<!-- SIGN UP MODAL -->
+
+<div class="modal" id="signupModal">
+
+    <div class="modal-box">
+
+        <button class="close" onclick="closeSignup()">×</button>
+
+        <h2>Create Account</h2>
+
+        <form id="signupForm">
+
+            <div class="form-group">
+
+                <label>Username</label>
+
+                <input
+                    type="text"
+                    id="signupUsername"
+                    placeholder="Your username"
+                    required
+                >
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Email</label>
+
+                <input
+                    type="email"
+                    id="signupEmail"
+                    placeholder="you@example.com"
+                    required
+                >
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Password</label>
+
+                <input
+                    type="password"
+                    id="signupPassword"
+                    placeholder="Create a password"
+                    minlength="6"
+                    required
+                >
+
+            </div>
+
+            <button class="submit" type="submit">
+                Sign Up
+            </button>
+
+        </form>
+
+        <div class="switch-auth">
+            Already have an account?
+            <button onclick="switchToLogin()">Login</button>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- LOGIN MODAL -->
+
+<div class="modal" id="loginModal">
+
+    <div class="modal-box">
+
+        <button class="close" onclick="closeLogin()">×</button>
+
+        <h2>Login</h2>
+
+        <form id="loginForm">
+
+            <div class="form-group">
+
+                <label>Email</label>
+
+                <input
+                    type="email"
+                    id="loginEmail"
+                    placeholder="you@example.com"
+                    required
+                >
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Password</label>
+
+                <input
+                    type="password"
+                    id="loginPassword"
+                    placeholder="Your password"
+                    required
+                >
+
+            </div>
+
+            <button class="submit" type="submit">
+                Login
+            </button>
+
+        </form>
+
+        <div class="switch-auth">
+            Don't have an account?
+            <button onclick="switchToSignup()">Sign Up</button>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- UPLOAD MODAL -->
+
+<div class="modal" id="uploadModal">
+
+    <div class="modal-box">
+
+        <button class="close" onclick="closeUpload()">×</button>
+
+        <h2>Upload an App</h2>
+
+        <form id="uploadForm">
+
+            <div class="form-group">
+
+                <label>App Name</label>
+
+                <input
+                    type="text"
+                    id="appName"
+                    placeholder="My Awesome App"
+                    required
+                >
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Developer</label>
+
+                <input
+                    type="text"
+                    id="developer"
+                    placeholder="Your name"
+                    required
+                >
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Description</label>
+
+                <textarea
+                    id="description"
+                    placeholder="Describe your app..."
+                    required
+                ></textarea>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Category</label>
+
+                <select id="category">
+
+                    <option>Games</option>
+                    <option>Education</option>
+                    <option>Productivity</option>
+                    <option>Entertainment</option>
+                    <option>Other</option>
+
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>App Icon</label>
+
+                <input
+                    type="file"
+                    id="icon"
+                    accept="image/*"
+                    required
+                >
+
+            </div>
+
+            <div class="form-group">
+
+                <label>App File</label>
+
+                <input
+                    type="file"
+                    id="appFile"
+                    required
+                >
+
+            </div>
+
+            <button class="submit" type="submit">
+                Upload App
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* ==========================================
+   DATABASE
+========================================== */
+
+let apps = [];
+let users = [];
+let currentUser = null;
+let currentCategory = "All";
+
+
+const databaseRequest =
+    indexedDB.open("MyPlayStore", 2);
+
+
+databaseRequest.onupgradeneeded = function(event) {
+
+    const db = event.target.result;
+
+    if (!db.objectStoreNames.contains("apps")) {
+
+        db.createObjectStore("apps", {
+            keyPath: "id"
+        });
+
+    }
+
+    if (!db.objectStoreNames.contains("users")) {
+
+        db.createObjectStore("users", {
+            keyPath: "id"
+        });
+
+    }
+
+};
+
+
+databaseRequest.onsuccess = function(event) {
+
+    window.db = event.target.result;
+
+    loadApps();
+    loadUsers();
+
+    updateAuthUI();
+
+};
+
+
+/* ==========================================
+   USERS
+========================================== */
+
+function loadUsers() {
+
+    const transaction =
+        db.transaction(["users"], "readonly");
+
+    const store =
+        transaction.objectStore("users");
+
+    const request =
+        store.getAll();
+
+    request.onsuccess = function() {
+
+        users = request.result;
+
+    };
+
+}
+
+
+function saveUser(user) {
+
+    const transaction =
+        db.transaction(["users"], "readwrite");
+
+    const store =
+        transaction.objectStore("users");
+
+    store.put(user);
+
+}
+
+
+/* ==========================================
+   SIGN UP
+========================================== */
+
+document
+.getElementById("signupForm")
+.addEventListener("submit", function(event) {
+
+    event.preventDefault();
+
+    const username =
+        document.getElementById("signupUsername").value.trim();
+
+    const email =
+        document.getElementById("signupEmail").value.trim().toLowerCase();
+
+    const password =
+        document.getElementById("signupPassword").value;
+
+
+    const existingUser =
+        users.find(user => user.email === email);
+
+
+    if (existingUser) {
+
+        alert("An account with this email already exists.");
+
+        return;
+
+    }
+
+
+    const user = {
+
+        id: Date.now(),
+
+        username: username,
+
+        email: email,
+
+        password: password
+
+    };
+
+
+    saveUser(user);
+
+    users.push(user);
+
+    currentUser = user;
+
+    localStorage.setItem(
+        "myPlayStoreCurrentUser",
+        user.id
+    );
+
+
+    closeSignup();
+
+    document.getElementById("signupForm").reset();
+
+    updateAuthUI();
+
+    alert("Account created successfully!");
+
+});
+
+
+/* ==========================================
+   LOGIN
+========================================== */
+
+document
+.getElementById("loginForm")
+.addEventListener("submit", function(event) {
+
+    event.preventDefault();
+
+    const email =
+        document.getElementById("loginEmail").value.trim().toLowerCase();
+
+    const password =
+        document.getElementById("loginPassword").value;
+
+
+    const user =
+        users.find(
+            user =>
+                user.email === email &&
+                user.password === password
+        );
+
+
+    if (!user) {
+
+        alert("Incorrect email or password.");
+
+        return;
+
+    }
+
+
+    currentUser = user;
+
+    localStorage.setItem(
+        "myPlayStoreCurrentUser",
+        user.id
+    );
+
+
+    closeLogin();
+
+    document.getElementById("loginForm").reset();
+
+    updateAuthUI();
+
+    renderApps();
+
+    alert("Logged in successfully!");
+
+});
+
+
+/* ==========================================
+   LOGOUT
+========================================== */
+
+function logout() {
+
+    currentUser = null;
+
+    localStorage.removeItem(
+        "myPlayStoreCurrentUser"
+    );
+
+    updateAuthUI();
+
+    renderApps();
+
+}
+
+
+/* ==========================================
+   RESTORE LOGIN
+========================================== */
+
+function restoreLogin() {
+
+    const savedUserId =
+        Number(
+            localStorage.getItem(
+                "myPlayStoreCurrentUser"
+            )
+        );
+
+
+    if (!savedUserId) return;
+
+
+    const user =
+        users.find(
+            user => user.id === savedUserId
+        );
+
+
+    if (user) {
+
+        currentUser = user;
+
+    }
+
+}
+
+
+/* ==========================================
+   AUTH UI
+========================================== */
+
+function updateAuthUI() {
+
+    restoreLogin();
+
+    const loginButton =
+        document.getElementById("loginButton");
+
+    const signupButton =
+        document.getElementById("signupButton");
+
+    const logoutButton =
+        document.getElementById("logoutButton");
+
+    const userMessage =
+        document.getElementById("userMessage");
+
+
+    if (currentUser) {
+
+        loginButton.style.display = "none";
+
+        signupButton.style.display = "none";
+
+        logoutButton.style.display = "block";
+
+        userMessage.style.display = "block";
+
+        userMessage.textContent =
+            "Logged in as " + currentUser.username;
+
+    } else {
+
+        loginButton.style.display = "block";
+
+        signupButton.style.display = "block";
+
+        logoutButton.style.display = "none";
+
+        userMessage.style.display = "none";
+
+    }
+
+}
+
+
+/* ==========================================
+   MODALS
+========================================== */
+
+function openSignup() {
+
+    document.getElementById("signupModal")
+        .style.display = "flex";
+
+}
+
+
+function closeSignup() {
+
+    document.getElementById("signupModal")
+        .style.display = "none";
+
+}
+
+
+function openLogin() {
+
+    document.getElementById("loginModal")
+        .style.display = "flex";
+
+}
+
+
+function closeLogin() {
+
+    document.getElementById("loginModal")
+        .style.display = "none";
+
+}
+
+
+function openUpload() {
+
+    if (!currentUser) {
+
+        alert("Please login or create an account before uploading an app.");
+
+        openLogin();
+
+        return;
+
+    }
+
+    document.getElementById("uploadModal")
+        .style.display = "flex";
+
+}
+
+
+function closeUpload() {
+
+    document.getElementById("uploadModal")
+        .style.display = "none";
+
+}
+
+
+function switchToLogin() {
+
+    closeSignup();
+    openLogin();
+
+}
+
+
+function switchToSignup() {
+
+    closeLogin();
+    openSignup();
+
+}
+
+
+/* ==========================================
+   APPS
+========================================== */
+
+function loadApps() {
+
+    const transaction =
+        db.transaction(["apps"], "readonly");
+
+    const store =
+        transaction.objectStore("apps");
+
+    const request =
+        store.getAll();
+
+
+    request.onsuccess = function() {
+
+        apps = request.result;
+
+        renderApps();
+
+    };
+
+}
+
+
+/* ==========================================
+   SAVE APP
+========================================== */
+
+function saveApp(app) {
+
+    const transaction =
+        db.transaction(["apps"], "readwrite");
+
+    const store =
+        transaction.objectStore("apps");
+
+    store.put(app);
+
+
+    transaction.oncomplete = function() {
+
+        loadApps();
+
+        closeUpload();
+
+        document
+            .getElementById("uploadForm")
+            .reset();
+
+        alert("App uploaded successfully!");
+
+    };
+
+}
+
+
+/* ==========================================
+   UPLOAD APP
+========================================== */
+
+document
+.getElementById("uploadForm")
+.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+
+    if (!currentUser) {
+
+        alert("Please login first.");
+
+        return;
+
+    }
+
+
+    const name =
+        document.getElementById("appName").value.trim();
+
+    const developer =
+        document.getElementById("developer").value.trim();
+
+    const description =
+        document.getElementById("description").value.trim();
+
+    const category =
+        document.getElementById("category").value;
+
+    const iconFile =
+        document.getElementById("icon").files[0];
+
+    const appFile =
+        document.getElementById("appFile").files[0];
+
+
+    if (!iconFile || !appFile) {
+
+        alert("Please select an icon and app file.");
+
+        return;
+
+    }
+
+
+    const iconData =
+        await fileToDataURL(iconFile);
+
+
+    const app = {
+
+        id: Date.now(),
+
+        name: name,
+
+        developer: developer,
+
+        description: description,
+
+        category: category,
+
+        icon: iconData,
+
+        file: appFile,
+
+        fileName: appFile.name,
+
+        ownerId: currentUser.id,
+
+        ownerUsername: currentUser.username,
+
+        date: new Date().toISOString()
+
+    };
+
+
+    saveApp(app);
+
+});
+
+
+/* ==========================================
+   FILE → DATA URL
+========================================== */
+
+function fileToDataURL(file) {
+
+    return new Promise((resolve, reject) => {
+
+        const reader =
+            new FileReader();
+
+        reader.onload =
+            () => resolve(reader.result);
+
+        reader.onerror =
+            reject;
+
+        reader.readAsDataURL(file);
+
+    });
+
+}
+
+
+/* ==========================================
+   RENDER APPS
+========================================== */
+
+function renderApps() {
+
+    const grid =
+        document.getElementById("appGrid");
+
+    const search =
+        document
+            .getElementById("search")
+            .value
+            .toLowerCase();
+
+
+    let filtered =
+        apps.filter(app => {
+
+            const matchesSearch =
+                app.name.toLowerCase().includes(search) ||
+                app.developer.toLowerCase().includes(search) ||
+                app.description.toLowerCase().includes(search);
+
+
+            const matchesCategory =
+                currentCategory === "All" ||
+                app.category === currentCategory;
+
+
+            return matchesSearch && matchesCategory;
+
+        });
+
+
+    grid.innerHTML = "";
+
+
+    if (filtered.length === 0) {
+
+        grid.innerHTML = `
+            <div class="empty">
+                <h3>No apps found</h3>
+                <p>Upload an app to get started.</p>
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    filtered.forEach(app => {
+
+        const card =
+            document.createElement("div");
+
+        card.className = "app-card";
+
+
+        const isOwner =
+            currentUser &&
+            app.ownerId === currentUser.id;
+
+
+        card.innerHTML = `
+
+            <img
+                class="app-icon"
+                src="${app.icon}"
+                alt="${escapeHTML(app.name)}"
+            >
+
+            <div class="app-name">
+                ${escapeHTML(app.name)}
+            </div>
+
+            <div class="app-developer">
+                ${escapeHTML(app.developer)}
+            </div>
+
+            <div class="app-category">
+                ${escapeHTML(app.category)}
+            </div>
+
+            <div class="app-description">
+                ${escapeHTML(app.description)}
+            </div>
+
+            ${
+                isOwner
+                ? `
+                    <div class="owner-label">
+                        ✓ Uploaded by you
+                    </div>
+                  `
+                : ""
+            }
+
+            <div class="app-buttons">
+
+                <button
+                    class="download"
+                    onclick="downloadApp(${app.id}, event)">
+                    Download
+                </button>
+
+                ${
+                    isOwner
+                    ? `
+                        <button
+                            class="delete"
+                            onclick="deleteApp(${app.id}, event)">
+                            Delete
+                        </button>
+                      `
+                    : ""
+                }
+
+            </div>
+        `;
+
+
+        grid.appendChild(card);
+
+    });
+
+}
+
+
+/* ==========================================
+   CATEGORY FILTER
+========================================== */
+
+function filterCategory(category, button) {
+
+    currentCategory = category;
+
+
+    document
+        .querySelectorAll(".sidebar button")
+        .forEach(btn =>
+            btn.classList.remove("active")
+        );
+
+
+    button.classList.add("active");
+
+
+    renderApps();
+
+}
+
+
+/* ==========================================
+   DOWNLOAD
+========================================== */
+
+function downloadApp(id, event) {
+
+    event.stopPropagation();
+
+
+    const app =
+        apps.find(a => a.id === id);
+
+
+    if (!app) return;
+
+
+    const url =
+        URL.createObjectURL(app.file);
+
+
+    const link =
+        document.createElement("a");
+
+    link.href = url;
+
+    link.download = app.fileName;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+
+    setTimeout(() => {
+
+        URL.revokeObjectURL(url);
+
+    }, 1000);
+
+}
+
+
+/* ==========================================
+   DELETE APP
+========================================== */
+
+function deleteApp(id, event) {
+
+    event.stopPropagation();
+
+
+    if (!currentUser) {
+
+        alert("Please login first.");
+
+        return;
+
+    }
+
+
+    const app =
+        apps.find(a => a.id === id);
+
+
+    if (!app) return;
+
+
+    if (app.ownerId !== currentUser.id) {
+
+        alert("You can only delete apps that you uploaded.");
+
+        return;
+
+    }
+
+
+    const confirmed =
+        confirm(
+            'Are you sure you want to delete "' +
+            app.name +
+            '"?'
+        );
+
+
+    if (!confirmed) return;
+
+
+    const transaction =
+        db.transaction(["apps"], "readwrite");
+
+    const store =
+        transaction.objectStore("apps");
+
+    store.delete(id);
+
+
+    transaction.oncomplete = function() {
+
+        apps =
+            apps.filter(a => a.id !== id);
+
+        renderApps();
+
+        alert("App deleted successfully.");
+
+    };
+
+}
+
+
+/* ==========================================
+   SECURITY
+========================================== */
+
+function escapeHTML(text) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
+
+}
+
+
+/* ==========================================
+   CLOSE MODALS
+========================================== */
+
+window.addEventListener("click", function(event) {
+
+    const signupModal =
+        document.getElementById("signupModal");
+
+    const loginModal =
+        document.getElementById("loginModal");
+
+    const uploadModal =
+        document.getElementById("uploadModal");
+
+
+    if (event.target === signupModal) {
+        closeSignup();
+    }
+
+
+    if (event.target === loginModal) {
+        closeLogin();
+    }
+
+
+    if (event.target === uploadModal) {
+        closeUpload();
+    }
+
+});
+
+
+/* ==========================================
+   START
+========================================== */
+
+setTimeout(() => {
+
+    if (window.db) {
+
+        loadApps();
+        loadUsers();
+
+        updateAuthUI();
+
+    }
+
+}, 500);
+
+</script>
+
+</body>
+</html>
