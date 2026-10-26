@@ -1,4 +1,4 @@
-# 🚀 Grayson's Coding Corner 🎮
+# 🚀 Grayson's Website 🎮
 
 Hey there! I'm Grayson and welcome to my awesome website repository! I am super into coding, playing video games, and basically anything to do with computers. I built this whole site using HTML, CSS, and JavaScript from scratch.
 
