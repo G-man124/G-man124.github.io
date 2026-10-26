@@ -2,7 +2,7 @@
 
 Hey there! I'm Grayson and welcome to my awesome website repository! I am super into coding, playing video games, and basically anything to do with computers. I built this whole site using HTML, CSS, and JavaScript from scratch.
 
-👉 **Check it out live here:** [g-man124.github.io](https://github.io)
+👉 **Check it out live here:** [g-man124.github.io](https://g-man124.github.io)
 
 > 🖥️ **PC GAMERS ONLY:** Leave mobile behind! This site is designed for the raw power of a real computer. Open this up on your desktop or laptop setup to load the games and tools without crashing!
 
