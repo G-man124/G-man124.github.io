@@ -97,6 +97,23 @@
 
     <p>I Like Coding, Video Games And Computer Stuff.</p>
     <br>
+    <button id="revealBtn">Button</button>
+    <div id="myDiv" style="display: none;">
+        <label for="codeInput">Enter the secret code:</label>
+        <input type="password" id="codeInput" placeholder="Type code here...">
+    </div>
+    <script>// Select the button and the hidden div
+const button = document.getElementById('revealBtn');
+const myDiv = document.getElementById('myDiv');
+
+// Listen for a click on the button
+button.addEventListener('click', function() {
+  // Reveal the div by changing display to 'block'
+  myDiv.style.display = 'block';
+});
+</script>
+    <br> 
+    <div id="secretDiv" style="display: none; margin-top: 15px; background-color: rgb(0, 255, 0);">
     <h4>Games:</h4>
         <a href="Grass.html">Cool 3D Grass.</a>
         <br>
@@ -113,6 +130,26 @@
         <br>
         <a href="store.html">Web Store</a>
         <br>
+    </div>
+    <script>
+  // 1. Select the input field and the hidden div
+  const codeInput = document.getElementById('codeInput');
+  const secretDiv = document.getElementById('secretDiv');
+  
+  // 2. Define the correct secret code (case-sensitive)
+  const secretCode = "OPEN123";
+
+  // 3. Listen for typing events ('input' fires on every keystroke)
+  codeInput.addEventListener('input', function() {
+    // Check if the user's input matches the secret code
+    if (codeInput.value === secretCode) {
+      secretDiv.style.display = 'block'; // Show the div
+    } else {
+      secretDiv.style.display = 'none';  // Keep it hidden (or hide it again if they backspace)
+    }
+  });
+</script>
+
     
     <h3>This website was coded with <span title="This stands for HyperText Markup Language.">HTML</span></h3>
     <br>
