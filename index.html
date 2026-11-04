@@ -7,6 +7,40 @@
     <meta name="author" content="Grayson Ogus">
     <title>Grayson</title>
     <script>function Website_link(Link) {window.location.href=Link}</script>
+    <style>
+    .cool-link {
+      position: relative;
+      color: #00ffcc;
+      text-decoration: none;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-weight: bold;
+      padding-bottom: 4px;
+    }
+  
+    .cool-link::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      transform: scaleX(0);
+      height: 2px;
+      bottom: 0;
+      left: 0;
+      background-color: #ff007f;
+      transform-origin: bottom right;
+      transition: transform 0.25s ease-out;
+      box-shadow: 0 0 8px #ff007f;
+    }
+  
+    .cool-link:hover::after {
+      transform: scaleX(1);
+      transform-origin: bottom left;
+    }
+  
+    .cool-link:hover {
+      color: #fff;
+      text-shadow: 0 0 10px #00ffcc;
+    }
+  </style>
     <script>
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
@@ -146,20 +180,24 @@ button.addEventListener('click', function() {
     <br> 
     <div id="secretDiv" style="display: none; margin-top: 15px; background-color: rgb(0, 255, 0);">
     <h4>Games:</h4>
-        <a href="Grass.html">Cool 3D Grass.</a>
+        <a href="Grass.html" class="cool-link">Cool 3D Grass.</a>
         <br>
-        <a href="Car.html">Fun 2D drive a car.</a>
+        <a href="Car.html" class="cool-link">Fun 2D drive a car.</a>
         <br>
-        <a href="sm64.html">Play Super Mario 64 in your browser!</a>
+        <a href="sm64.html" class="cool-link">Play Super Mario 64 in your browser!</a>
+        <br>
+        <a href="bss.html" class="cool-link">Play Bee Swarm Simulator!</a>
+        <br>
+        <a href="1.8.8.html" class="cool-link">Play Minecraft 1.8.8!</a>
         
         
     <br>
     <h4>Other HTML Websites:</h4>
-        <a href="encode.html">Base64 Encode</a>
+        <a href="encode.html" class="cool-link">Base64 Encode</a>
         <br>
-        <a href="button.html">Cool Neon Button</a>
+        <a href="button.html" class="cool-link">Cool Neon Button</a>
         <br>
-        <a href="store.html">Web Store</a>
+        <a href="store.html" class="cool-link">Web Store</a>
         <br>
     </div>
     <br>
