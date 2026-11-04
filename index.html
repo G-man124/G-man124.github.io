@@ -7,6 +7,10 @@
     <meta name="author" content="Grayson Ogus">
     <title>Grayson</title>
     <script>function Website_link(Link) {window.location.href=Link}</script>
+    <script>
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+    </script>
     <style>.hidden-link {cursor: text; text-decoration: none; color: rgb(0, 0, 0);}</style>
     <style>
         /* Base styles for the button */
