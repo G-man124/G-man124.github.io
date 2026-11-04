@@ -9,6 +9,25 @@
     <script>function Website_link(Link) {window.location.href=Link}</script>
     <style>.hidden-link {cursor: text; text-decoration: none; color: rgb(0, 0, 0);}</style>
     <style>
+        /* Base styles for the button */
+        .hover-btn {
+            background-color: #007BFF;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            /* Smoothly transition the background color over 0.3 seconds */
+            transition: background-color 0.3s ease; 
+        }
+
+        /* Hover styles applied when mouse enters the element */
+        .hover-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -98,7 +117,8 @@
 
     <p>I Like Coding, Video Games And Computer Stuff.</p>
     <br>
-    <button id="revealBtn">Button</button>
+
+    <button id="revealBtn" class="hover-btn">Button</button>
     <div id="myDiv" style="display: none;">
         <label for="codeInput">Enter the secret code:</label>
         <input type="password" id="codeInput" placeholder="Type code here...">
@@ -159,7 +179,7 @@ button.addEventListener('click', function() {
     <br>
     <a onclick="displayImage()" href="#ai_call" >Want to call a Ai?</a>
     <br>
-    <button onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()">Toggle Full Screen</button>
+    <button onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()" class="hover-btn">Toggle Full Screen</button>
     </dialog>
 
     <label for="Choose"><br>Choose Something:</label> 
@@ -258,9 +278,9 @@ button.addEventListener('click', function() {
         </div>
     
         <div class="controls">
-            <button id="startBtn">1. Start Camera</button>
-            <button id="recordBtn" disabled>2. Start Recording</button>
-            <button id="stopBtn" disabled>3. Stop & Save</button>
+            <button id="startBtn" class="hover-btn">1. Start Camera</button>
+            <button id="recordBtn" class="hover-btn" disabled>2. Start Recording</button>
+            <button id="stopBtn" class="hover-btn" disabled>3. Stop & Save</button>
         </div>
     
         <p id="status">Status: Waiting to start camera...</p>
