@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Base64 Data URI Encoder</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            resize: vertical;
+            font-family: monospace;
+        }
+        input[type="file"] {
+            display: block;
+            margin-top: 5px;
+        }
+        .button-group {
+            margin-top: 15px;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0052a3;
+        }
+        button.secondary {
+            background-color: #6e6e73;
+            margin-left: 10px;
+        }
+        button.secondary:hover {
+            background-color: #555559;
+        }
+        .output-container {
+            margin-top: 30px;
+            background-color: #f1f1f1;
+            padding: 20px;
+            border-radius: 4px;
+        }
+        .meta-info {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Universal Base64 Encoder</h2>
+        <p>Paste text/HTML or upload any media file (photo, video) to generate a Data URI.</p>
+
+        <!-- Input Option 1: Raw Text / HTML -->
+        <div class="section">
+            <label for="textInput">Option 1: Paste Text or HTML</label>
+            <textarea id="textInput" placeholder="Type or paste your text/HTML here..."></textarea>
+            <div class="button-group">
+                <button onclick="encodeRawText('text/plain')">Encode as Text</button>
+                <button onclick="encodeRawText('text/html')" class="secondary">Encode as HTML</button>
+            </div>
+        </div>
+
+        <!-- Input Option 2: Files (Photos, Videos, Documents) -->
+        <div class="section">
+            <label for="fileInput">Option 2: Upload a File (Photo, Video, HTML file, etc.)</label>
+            <input type="file" id="fileInput" onchange="encodeFile(this.files[0])">
+        </div>
+
+        <!-- Output Section -->
+        <div class="output-container">
+            <div class="meta-info" id="metaInfo">Output size: 0 characters</div>
+            <label for="outputResult">Data URI Output:</label>
+            <textarea id="outputResult" readonly placeholder="Your data:text/...;base64 string will appear here..."></textarea>
+            <div class="button-group">
+                <button onclick="copyToClipboard()">Copy to Clipboard</button>
+                <button onclick="clearAll()" class="secondary">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const fileInput = document.getElementById('fileInput');
+        const outputResult = document.getElementById('outputResult');
+        const metaInfo = document.getElementById('metaInfo');
+
+        // Handler for Text and HTML inputs
+        function encodeRawText(mimeType) {
+            const text = textInput.value;
+            if (!text) {
+                alert('Please enter some text or HTML to encode.');
+                return;
+            }
+            
+            // Clear file input to avoid confusion
+            fileInput.value = '';
+
+            try {
+                // Convert text to a UTF-8 byte array to safely handle emojis/special characters
+                const blob = new Blob([text], { type: `${mimeType};charset=utf-8` });
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    displayOutput(e.target.result);
+                };
+                reader.readAsDataURL(blob);
+            } catch (error) {
+                alert('Encoding failed: ' + error.message);
+            }
+        }
+
+        // Handler for Binary Files (images, videos, documents)
+        function encodeFile(file) {
+            if (!file) return;
+
+            // Clear text input to avoid confusion
+            textInput.value = '';
+
+            const reader = new FileReader();
+            
+            // readAsDataURL automatically resolves the proper MIME type and prefixes data:*/*;base64,
+            reader.onload = function(e) {
+                displayOutput(e.target.result);
+            };
+
+            reader.onerror = function() {
+                alert('Error reading file.');
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        // Helper to populate UI elements
+        function displayOutput(dataUriString) {
+            outputResult.value = dataUriString;
+            metaInfo.textContent = `Output size: ${dataUriString.length.toLocaleString()} characters`;
+        }
+
+        // Clipboard function
+        function copyToClipboard() {
+            if (!outputResult.value) {
+                alert('Nothing to copy!');
+                return;
+            }
+            outputResult.select();
+            document.execCommand('copy');
+            alert('Data URI copied to clipboard!');
+        }
+
+        // Reset utility
+        function clearAll() {
+            textInput.value = '';
+            fileInput.value = '';
+            outputResult.value = '';
+            metaInfo.textContent = 'Output size: 0 characters';
+        }
+    </script>
+</body>
+</html>

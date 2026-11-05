@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<!-- THIS WAS MADE WITH HTML, CSS, AND JAVASCRIPT. --> 
+<html>
+	<head>
+		<title>Hill Climber [Primavera]</title>
+		<style>
+          html, body {
+            margin: 0;
+            padding: 0;
+          }
+          body {
+            background: black;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+          }
+          canvas {
+            width: min(100vw, calc(100vh / 9 * 16)) !important;
+            height: auto !important;
+          }
+        </style>
+        <script src="https://cdn.jsdelivr.net/gh/vExcess/library@main/p5.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/matter-js@0.18.0/build/matter.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/simplify-js@1.2.4/simplify.min.js"></script>
+         <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Luckiest+Guy&display=swap" rel="stylesheet">
+	</head>
+	<body>
+	   <script>
+	        var frame = requestAnimationFrame(Math.cos)
+	        while(frame--) {
+	            cancelAnimationFrame(frame)
+	        }
+	    </script>
+	   <script type='application/javascript'>
+            window.Helpers = (() => {
+              function drawVertices(vertices) {
+                beginShape()
+                for(let v of vertices) {
+                  vertex(v.x, v.y)
+                }
+                endShape(CLOSE)
+              }
+              function drawBody(body) {
+                if(body.parts && body.parts.length > 1) {
+                  for(let p = 1; p < body.parts.length; p++) {
+                    drawVertices(body.parts[p].vertices)
+                  }
+                }else {
+                  drawVertices(body.vertices)
+                }
+              }
+              function drawBodies(bodies) {
+                for(let body of bodies) {
+                  drawBody(body)
+                }
+              }
+              return {
+                drawBody,
+                drawVertices,
+                drawBodies,
+              }
+            })()
+	    </script>
+       <script type='module'>
+(() => {
+    
+/**
+ * Keeps track of high scores of players
+ * @const {Array}
+ */
+const LEADERBOARD_SCORES = [
+    ['Keenan Dooley', 1719],
+    ['ℂ𝕠𝕣𝕚𝕟 𝔽𝕚𝕤𝕥 ', 1675],
+    ['Jake. K', 1332],
+    ['Ibraheem Ahmed (IA)', 1038],
+    ['Triumvirate Softworks', 1064],
+    ['Hawkeye', 1365],
+    ['Cubic Coding', 1517],
+    ['VEXCESS', 1478],
+].sort((a, b) => b[1] - a[1]).slice(0, 5)
+
+const keys = []
+function keyPressed() {
+  keys[keyCode] = true
+}
+function keyReleased() {
+  keys[keyCode] = false
+}
+
+let clicked = false, mouse;
+
+const { drawBody, drawBodies } = Helpers
+
+
+
+// Graphics
+/**
+ * Draws a truck
+ * @param {number} x position
+ * @param {number} y position
+ * @param {number} size
+ * @param {number} angle of rotation
+ */
+function drawTruck(x, y, s, r) {
+  push()
+  translate(x, y)
+  rotate(r)
+  translate(0, -10)
+
+  scale(s / 200);
+  
+  noStroke()
+  
+  fill(50);
+  beginShape();
+  vertex(-100, 35);
+  vertex(-100, 0);
+  vertex(90, 0)
+  vertex(90, 35)
+  vertex(55, 45)
+  vertex(25, 38)
+  vertex(-42, 38)
+  vertex(-67, 45)
+  endShape(CLOSE);
+  
+  
+  fill(255, 136, 0);
+  beginShape()
+  vertex(-100, -5)
+  vertex(-10, -5)
+  vertex(-10, -35)
+  vertex(30, -35)
+  vertex(50, -5)
+  vertex(88, 0)
+  vertex(93, 5)
+  vertex(95, 5)
+  vertex(95, 20)
+  vertex(100, 20)
+  vertex(100, 35)
+  vertex(75, 35)
+  vertex(65, 15)
+  vertex(45, 15)
+  vertex(35, 35)
+  vertex(-45, 35)
+  vertex(-55, 15)
+  vertex(-75, 15)
+  vertex(-85, 35)
+  vertex(-100, 35)
+  endShape(CLOSE)
+  
+  fill(0, 200, 255);
+  beginShape()
+  vertex(-5, -30)
+  vertex(28, -30)
+  vertex(39, -14)
+  vertex(37, -7)
+  vertex(-5, -7)
+  endShape(CLOSE)
+  
+  fill(255, 230, 200);
+  beginShape()
+  vertex(-100, -4)
+  vertex(43, -4)
+  vertex(86, 1)
+  vertex(80, 5)
+  vertex(-99, 3)
+  endShape(CLOSE)
+  
+  beginShape()
+  vertex(50, 5)
+  vertex(95, 8)
+  vertex(95, 13)
+  endShape(CLOSE)
+  
+  rect(68, 21, 30, 10, 0, 4, 0, 0);
+  
+  noFill()
+  strokeWeight(1)
+  stroke(217, 110, 3);
+  beginShape()
+  vertex(-7, -32)
+  vertex(29, -32)
+  vertex(42, -8)
+  vertex(43, 10)
+  vertex(33, 30)
+  vertex(-7, 30)
+  endShape(CLOSE)
+  
+  fill(0);
+  noStroke()
+  rect(34, -13, 10, 10, 4)
+
+  fill(140, 0, 30)
+  rect(-100, 10, 6, 16)
+  fill(170, 50, 90)
+  rect(-100, 18, 6, 9)
+  
+  noFill()
+  stroke(0);
+  strokeWeight(1)
+  // rect(-100, -50, 200, 100)
+  pop()
+}
+
+/**
+ * Draws a wood border
+ * @param {number} x position
+ * @param {number} y position
+ * @param {number} width of frame
+ * @param {number} height of frame
+ */
+function woodBorder(x, y, w, h, bevel) {
+  push()
+  if(!bevel) bevel = 20
+  fill(67, 57, 65);
+  noStroke()
+  stroke(110, 96, 87);
+  strokeWeight(10)
+  strokeCap(SQUARE)
+  beginShape()
+  vertex(x + bevel / 2, y)
+  vertex(x + w - bevel / 2, y)
+  vertex(x + w, y + bevel)
+  vertex(x + w, y + h - bevel)
+  vertex(x + w - bevel / 2, y + h)
+  vertex(x + bevel / 2, y + h)
+  vertex(x, y + h - bevel)
+  vertex(x, y + bevel)
+  endShape(CLOSE)
+  pop()
+}
+
+/**
+ * Draws a gas tank
+ * @param {number} x position
+ * @param {number} y position
+ * @param {number} size of image
+ */
+function gas(x, y, s) {
+  push();
+  translate(x, y)
+  scale(s / 100)
+  noFill()
+  rect(-s / 2, -s / 2, s, s)
+  
+  fill(200, 0, 0);
+  noStroke()
+  rect(-s / 2 + s / 8, -s / 2 + s / 10, s - s / 4, s - s / 5, s / 15, s / 5, s / 15, s / 15);
+  
+  stroke(100, 0, 0);
+  strokeWeight(1);
+  noFill()
+  rect(-s / 8, -s / 8, s / 4, s / 4)
+  line(-s / 4, -s / 4, -s / 8, -s / 8)
+  line(-s / 4, s / 4, -s / 8, s / 8)
+  line(s / 4, -s / 4, s / 8, -s / 8)
+  line(s / 4, s / 4, s / 8, s / 8)
+  noStroke()
+  
+  fill(0, 50);
+  rect(s / 2 - s / 3, -s / 2 + s / 10, s / 5, s - s / 5, 0, s / 5, s / 15, 0)
+  
+  fill(0);
+  noStroke()
+  ellipse(0, s / 30, s / 10, s / 10)
+  triangle(-s / 20, s / 30, s / 20, s / 30, 0, -s / 15)
+  fill(255, 150);
+  ellipse(-s / 40, s / 20, s / 40, s / 20)
+  
+  fill(255, 100);
+  rect(-s / 2 + s / 8, -s / 2 + s / 10, s / 20, s - s / 5)
+  fill(255, 50);
+  rect(-s / 2 + s / 5.5, -s / 2 + s / 10, s / 5, s - s / 5)
+  
+  fill(240);
+  noStroke()
+  push()
+  translate(-s / 2 + s / 6, -s / 2 + s / 7)
+  rotate(-Math.PI / 4)
+  rect(-s / 10, -s / 20, s / 5, s / 10)
+  pop()
+  pop()
+}
+
+/**
+ * Draws a wheel
+ * @param {number} x position
+ * @param {number} y position
+ * @param {number} diameter of wheel
+ * @param {number} angle of rotation
+ */
+function drawWheel(x, y, s, a) {
+  noStroke()
+  fill(0)
+  push()
+  translate(x, y)
+  rotate(a)
+  fill(50, 55, 70)
+  noStroke()
+  ellipse(0, 0, s - s / 20, s - s / 20)
+  for(var i = 0; i < Math.PI * 2; i += Math.PI / 8) {
+    push()
+    rotate(i)
+    rect(s / 2 - s / 10, -s / 10, s / 10, s / 10)
+    pop()
+  }
+  fill(150, 150, 160)
+  stroke(40, 45, 60)
+  strokeWeight(s / 20)
+  ellipse(0, 0, s / 2, s / 2)
+  noStroke()
+  fill(80, 80, 90)
+  for(var i = 0; i < Math.PI * 2; i += Math.PI * 2 / 5) {
+    ellipse(cos(i) * s / 8, sin(i) * s / 8, s / 10, s / 10)
+  }
+  pop()
+}
+
+
+/**
+ * Detects if a point is inside a rectangle drawn from center
+ * @param {object} location of point
+ * @param {object} location and dimensions of rectangle
+ */
+function pointRect(p, r) {
+  return Math.abs(p.x - r.x) < r.w / 2 && Math.abs(p.y - r.y) < r.h / 2
+}
+
+// Initialize matter.js
+const engine = Matter.Engine.create()
+const world = engine.world
+// Run the engine
+Matter.Runner.run(engine)
+
+/** 
+ * Gets last item in array
+ * @param {array} array
+ */
+function last(arr) {
+  return arr[arr.length - 1] 
+}
+
+/**
+ * Gets the sign of a number.
+ * @param {number} number
+ */ 
+const sign = n => n < 0 ? -1 : n === 0 ? 0 : 1
+
+/**
+ * Converts degrees into radians
+ * @param {number} angle in degrees
+ */ 
+const radians = deg => deg / 180 * Math.PI
+
+
+/**
+ * Chooses a random item from array
+ */
+Array.prototype.pick = function() {
+  return this[Math.floor(Math.random() * this.length)]
+}
+
+/**
+ * Cosine interpolation from one point to another
+ * @param {number} first point
+ * @param {number} second point
+ * @param {number} number between 0 and 1
+ */
+function cosineInterpolate(y1, y2, delta) {
+  const nDelta = (1 - cos(delta * Math.PI)) / 2
+  return y1 * (1 - nDelta) + y2 * nDelta
+}
+
+
+const easeInDuo = x => x * x
+
+const slopeOptions = {
+  slopeSize: [200, 600],
+  slopesPerMountain: 4,
+  amplitude: 200,
+  startingHeight: 0.6
+}
+
+const cam = {
+  x: 0, y: 450, speed: 0.2, offsetX: 0.3, offsetY: 0.5,
+  edgeX: 0, bounds: { minX: 1 },
+  follow(position) {
+    this.x += (position.x - this.x) * this.speed
+    this.y += (position.y - this.y) * this.speed
+  },
+  run() {
+    this.edgeX = this.x - width * this.offsetX
+    this.edgeX = constrain(this.edgeX, this.bounds.minX || this.edgeX, this.bounds.maxX ? width - this.bounds.maxX : this.edgeX)
+    translate(-this.edgeX, height * this.offsetY - this.y)
+  },
+  inView(pos, range = 0) {
+    return abs(this.x - pos.x) < width / 2 + range
+  },
+  init(clearBounds = true) {
+    this.x = 0
+    this.y = 450
+    this.edgeX = 0
+
+    if(clearBounds) {
+      this.bounds = { minX: 1 }
+    }
+  }
+}
+
+
+
+class Particle {
+  constructor(x, y, xVel, yVel) {
+    this.x = x
+    this.y = y
+    this.life = 1
+    this.deathSpeed = 0.05
+    this.damping = 0.95
+    this.xVel = xVel ?? random(-3, 3)
+    this.yVel = yVel ?? random(-3, 3)
+  }
+  update() {
+    this.life -= this.deathSpeed
+    if(this.life <= 0) {
+      return this.dead = true
+    }
+    this.x += this.xVel = this.xVel * this.damping
+    this.y += this.yVel = this.yVel * this.damping
+  }
+  display() {
+    noStroke()
+    fill(this.life * 100 + 155, this.life * 255)
+    ellipse(this.x, this.y, 10, 10)
+  }
+}
+
+const particles = {
+  arr: [],
+  emitFrom(amount, location, speed, distance = 0, angle = 0) {
+    const xt = Math.cos(angle)
+    const yt = Math.sin(angle)
+    for(var i = 0; i < amount; i++) {
+      this.arr.push(new Particle(location.x + xt * distance + random(-5, 5), location.y + yt * distance + random(-5, 5), xt * speed + random(-1, 1), xt * speed + random(-1, 1)))
+    }
+  },
+  run() {
+    for(var i = this.arr.length - 1; i >= 0; i--) {
+      this.arr[i].update()
+      this.arr[i].display()
+      if(this.arr[i].dead) this.arr.splice(i, 1)
+    }
+  },
+  clear() {
+    this.arr = []
+  }
+}
+
+class Terrain {
+  constructor() {
+    this.options = slopeOptions
+    this.mountainStart = createVector(0, 0)
+    this.mountains = 0
+    this.vertices = []
+    this.terrain = []
+    this.rocks = []
+    this.imgs = []
+    this.w = 0
+  }
+  generateMountain(start) {
+    console.log(start)
+    let slopeStart = createVector(0, start.y)
+    const slopeLength = floor(random(this.options.slopeSize[0], this.options.slopeSize[1]))
+    let slopeEnd = start.x === 0 ? createVector(this.options.slopeSize[1], 0) : createVector(slopeStart.x + slopeLength, Math.random())
+    let slopes = 0
+    let currentX = 0
+    let points = []
+    while(slopes < this.options.slopesPerMountain) {
+      let interp = cosineInterpolate(slopeStart.y, slopeEnd.y, (currentX - slopeStart.x) / (slopeEnd.x - slopeStart.x))
+
+      if(currentX === slopeEnd.x) {
+        slopes++
+
+        slopeStart = createVector(currentX, slopeEnd.y)
+
+        slopeEnd = createVector(slopeEnd.x + floor(random(this.options.slopeSize[0], this.options.slopeSize[1])), Math.random())
+
+        interp = slopeStart.y
+      }
+
+      const currentY = height * this.options.startingHeight + interp * this.options.amplitude
+
+      points.push(createVector(currentX, currentY))
+
+      currentX++
+    }
+
+    points = points.map(p => ({ x: p.x + start.x, y: p.y }))
+
+    const simpleSlope = simplify(points, 1, true)
+
+    this.vertices = this.vertices.concat(simpleSlope)
+    for(var i = 1; i < simpleSlope.length; i++) {
+      const oldP = simpleSlope[i - 1]
+      const newP = simpleSlope[i]
+
+      const distance = dist(oldP.x, oldP.y, newP.x, newP.y)
+      const angle = atan2(newP.y - oldP.y, newP.x - oldP.x)
+      const center = createVector((oldP.x + newP.x) / 2, (oldP.y + newP.y) / 2)
+
+      const body = Matter.Bodies.rectangle(center.x, center.y, distance, 10, {
+        isStatic: true,
+        angle,
+        friction: 1,
+        restitution: 0,
+        collisionFilter: {
+          category: 2
+        },
+        label: 'ground'
+      })
+      this.terrain.push(body)
+      
+      if(Math.random() < 0.02) {
+        const rock = Matter.Bodies.circle(center.x, center.y, ~~random(15, 25), { 
+          isStatic: true, 
+          collisionFilter: {
+            category: 2
+          },
+          label: 'ground'
+        })
+        this.rocks.push(rock)
+        Matter.Composite.add(engine.world, rock)
+      }
+      Matter.Composite.add(engine.world, body)
+    }
+
+    this.w += currentX
+
+    return createVector(start.x + currentX - 1, slopeStart.y)
+  }
+  update() {
+    while(this.mountainStart.x < cam.edgeX + width + 500) {
+      this.mountainStart = this.generateMountain(this.mountainStart)
+    }
+    while(this.vertices.length > 2 && cam.edgeX > this.vertices[1].x + 100) {
+      this.vertices.shift()
+    }
+    // console.log(this.terrain[0])
+
+    this.handle(this.terrain, this.rocks)
+  }
+  handle(...args) {
+    args.forEach(items => {
+      while(items.length && cam.edgeX > items[0].bounds.max.x) {
+        Matter.Composite.remove(engine.world, items[0])
+        // console.log("Item removed", items[0], Matter.Composite.allBodies(engine.world).length)
+        items.shift()
+      }
+      
+    })
+  }
+  display() {
+    stroke(40)
+    fill(140)
+    drawBodies(this.rocks)
+    this.drawTerrain(this.vertices)
+  }
+  drawTerrain(vertices) {
+
+    var sX = vertices[0].x
+
+    fill(60, 50, 50)
+    noStroke()
+    beginShape()
+    vertex(sX, cam.y + height / 2)
+    for(var i = 0; i < vertices.length; i++) {
+      vertex(vertices[i].x, vertices[i].y)
+    }
+    vertex(this.w, cam.y + height / 2)
+    endShape()
+
+
+    fill(50, 45, 45)
+    noStroke()
+    beginShape()
+    vertex(sX, cam.y + height / 2)
+    for(var i = 0; i < vertices.length; i++) {
+      vertex(vertices[i].x, vertices[i].y + 160)
+    }
+    vertex(this.w, cam.y + height / 2)
+    endShape()
+
+    stroke(30, 170, 20)
+    strokeWeight(10)
+    for(var i = 1; i < vertices.length - 1; i++) {
+      line(vertices[i].x, vertices[i].y, vertices[i - 1].x, vertices[i - 1].y)
+    }
+    stroke(10, 120, 30)
+    strokeWeight(50)
+    for(var i = 1; i < vertices.length - 1; i++) {
+      line(vertices[i].x, vertices[i].y + 30, vertices[i - 1].x, vertices[i - 1].y + 30)
+    }
+    stroke(0, 80, 10)
+    strokeWeight(10)
+    for(var i = 1; i < vertices.length - 1; i++) {
+      line(vertices[i].x, vertices[i].y + 55, vertices[i - 1].x, vertices[i - 1].y + 55)
+    }
+  }
+  clear() {
+    this.terrain.forEach(b => {
+      Matter.Composite.remove(engine.world, b)
+    })
+  }
+}
+let menuTerrain;
+
+class Truck {
+  constructor(x, y) {
+    this.create(x, y)
+    this.velocity = 0
+    this.acceleration = 0.01
+    this.fuel = 100
+    this.angle = 0
+    this.accelerating = false
+  }
+  create(x, y) {
+    
+    this.parts = {}
+    
+    const floor = Matter.Bodies.rectangle(x, y, 120, 30, { 
+      label: 'car'
+    })
+
+    const roof = Matter.Bodies.rectangle(x + 10, y - 30, 40, 30, { 
+      label: 'roof'
+    })
+
+    this.parts.body = Matter.Body.create({
+      parts: [floor, roof],
+      friction: 1,
+      restitution: 0
+    })
+
+
+    this.parts.frontWheel = Matter.Bodies.circle(x + 45, y + 25, 30, {
+      friction: 1,
+      restitution: 1,
+      collisionFilter: { mask: 2 },
+      label: 'wheel'
+    })
+
+
+    this.parts.rearWheel = Matter.Bodies.circle(x - 45, y + 25, 30, {
+      friction: 1,
+      restitution: 1,
+      collisionFilter: { mask: 2 },
+      label: 'wheel'
+    })
+
+
+    this.parts.frontShock1 = Matter.Constraint.create({
+      bodyA: this.parts.body,
+      pointA: { x: 40, y: 0 },
+      bodyB: this.parts.frontWheel,
+      stiffness: 1,
+    })
+
+    this.parts.frontShock2 = Matter.Constraint.create({
+      bodyA: this.parts.body,
+      pointA: { x: 55, y: 0 },
+      bodyB: this.parts.frontWheel,
+      stiffness: 1,
+    })
+    
+    this.parts.frontShock3 = Matter.Constraint.create({
+      bodyA: this.parts.body,
+      pointA: { x: 47, y: 10 },
+      bodyB: this.parts.frontWheel,
+      stiffness: 1
+    })
+
+
+    this.parts.rearShock1 = Matter.Constraint.create({
+      bodyA: this.parts.body,
+      pointA: { x: -40, y: 0 },
+      bodyB: this.parts.rearWheel,
+      stiffness: 1
+    })
+
+    this.parts.rearShock2 = Matter.Constraint.create({
+      bodyA: this.parts.body,
+      pointA: { x: -55, y: 0 },
+      bodyB: this.parts.rearWheel,
+      stiffness: 1
+    })
+    
+    this.parts.rearShock3 = Matter.Constraint.create({
+      bodyA: this.parts.body,
+      pointA: { x: -47, y: 10 },
+      bodyB: this.parts.rearWheel,
+      stiffness: 1
+    })
+
+    Matter.Composite.add(engine.world, Object.values(this.parts))
+  }
+  update() {
+    this.accelerating = true
+    if(keys[32]) {
+      this.velocity = 0
+      this.braking = true
+      this.accelerating = false
+    }else {
+      this.braking = false
+    }
+    if(keys[39]) {
+      this.velocity = max(this.velocity + this.acceleration, 0)
+    }else if(keys[37]) {
+      this.velocity = min(this.velocity - this.acceleration, 0)
+    }else if(!this.braking) {
+      this.accelerating = false
+      this.velocity = this.parts.rearWheel.angularVelocity
+    }
+    this.velocity = constrain(this.velocity, -0.5, 1)
+    if(this.accelerating || this.braking) {
+      if(!this.braking) {
+        this.fuel -= 0.1
+      }
+      Matter.Body.setAngularVelocity(this.parts.rearWheel, this.velocity)
+      Matter.Body.setAngularVelocity(this.parts.frontWheel, this.velocity)
+    }
+  }
+  display() {
+    noStroke()
+    fill(255, 255, 0)
+    drawTruck(this.parts.body.position.x, this.parts.body.position.y, 155, this.parts.body.angle)
+    fill(100)
+    drawWheel(this.parts.frontWheel.position.x, this.parts.frontWheel.position.y, 60, this.parts.frontWheel.angle)
+    drawWheel(this.parts.rearWheel.position.x, this.parts.rearWheel.position.y, 60, this.parts.rearWheel.angle)
+    fill(255, 255, 0, 100)
+  }
+  destroy() {
+    Matter.Composite.remove(engine.world, Object.values(this.parts))
+  }
+  didFlip() {
+    if(Math.abs(this.parts.body.angle - this.angle) > Math.PI * 2) {
+      this.angle += (sign(this.parts.body.angle - this.angle) * Math.PI * 2)
+      return true
+    }
+    return false
+  }
+}
+let menuTruck = new Truck(200, 480)
+
+let fuelTank = {
+  obj: null,
+  x: -1000,
+  y: -1000,
+  distance: 10000,
+  placed: false,
+  moveTo(x, y) {
+    this.x = x
+    this.y = y
+  },
+  collect() {
+    this.placed = false
+    this.y = -9999
+  },
+  reset() {
+    this.x = -1000
+    this.y = -1000
+    this.distance = 10000
+    this.placed = false
+  }
+}
+
+class Button {
+  constructor(x, y, w, h, t, onClick) {
+    this.x = x
+    this.y = y
+    this.w = w
+    this.h = h
+    this.text = t
+    this.onClick = onClick
+  }
+  run() {
+    woodBorder(this.x - this.w / 2 - 10, this.y - this.h / 2 - 10, this.w + 20, this.h + 20)
+    fill(255)
+    stroke(100)
+    strokeWeight(3)
+    textAlign(CENTER, CENTER)
+    textSize(min(this.w / 5, this.h - 20))
+    text(this.text, this.x, this.y)
+    if(pointRect(mouse, this)) {
+      cursor('pointer')
+      if(clicked) this.onClick()
+    }
+  }
+}
+
+
+const popups = {
+  arr: [],
+  add(p) {
+    this.arr.push(p)
+    return p
+  },
+  run() {
+    for(var i = this.arr.length - 1; i >= 0; i--) {
+      this.arr[i].update()
+      this.arr[i].display()
+      if(this.arr[i].dead) {
+        this.arr.splice(i, 1)
+      }
+    }
+  },
+  clearAll() {
+    this.arr = []
+  }
+}
+class Popup {
+  constructor() {
+    this.scale = 0
+    this.speed = 5
+    this.time = 0
+    this.closed = false
+    this.visible = false
+  }
+  update() {
+    this.time += this.speed
+    this.scale = this.closed ? (this.time < 130 ? cos(radians(this.time - 40)) * 1.4 : 0) : (this.time < 70 ? sin(radians(this.time * 1.8)) * 1.2 : 1);
+    if(this.closed && this.time > 130) {
+      this.visible = false
+    }else {
+      this.visible = true
+    }
+  }
+  close() {
+    this.time = 0
+    this.closed = true
+  }
+  open() {
+    this.time = 0
+    this.closed = false
+  }
+}
+
+class Leaderboard extends Popup {
+  constructor(scores) {
+    super()
+    this.scores = scores
+    this.playerScore = 0
+    this.scores.push(["You", this.playerScore])
+    this.updateScores()
+    this.closeBtn = new Button(width / 2, height / 2 + 300, 200, 60, 'Close', () => this.close())
+    this.opened = false
+  }
+  updateScores() {
+    this.scores.sort((a, b) => b[1] - a[1])
+  }
+  setPlayerScore(score) {
+    let i = this.scores.findIndex(s => s[0] === 'You')
+    if(i === -1) return
+    this.scores[i][1] = score
+    this.updateScores()
+  }
+  display() {
+    if(!this.visible) return
+    push()
+    stroke(100, 100, 100)
+    strokeWeight(5)
+    translate(width / 2, height / 2)
+    scale(this.scale)
+    woodBorder(-400, -300, 800, 600)
+    fill(255)
+    textSize(65)
+    textAlign(CENTER, CENTER)
+    text("Leaderboard", 0, -200)
+
+    textSize(35)
+    text("Player", -200, -100)
+    text("Score", 200, -100)
+    textSize(25)
+    
+    for(var i = 0; i < this.scores.length; i++) {
+      text(this.scores[i][0], -200, -50 + i * 50)
+      text(this.scores[i][1] + 'm', 200, -50 + i * 50)
+    }
+    translate(-width / 2, -height / 2)
+    this.closeBtn.run()
+    pop()
+  }
+}
+let leaderboard;
+
+class GameOver extends Popup {
+  constructor() {
+    super()
+    this.messages = {
+      crash: ['Reckless driving never pays off', "I'm going to have to revoke your lisence", "It was the wind"],
+      fuel: ['Gotta conserve that fuel', 'Sorry, no gas stations out here']
+    }
+    this.msg = ''
+    this.x = width / 2
+    this.y = height / 2
+    this.w = 600
+    this.h = 400
+    this.closeBtn = new Button(width / 2 - 120, height / 2 + 120, 200, 60, "Close", () => { this.close() })
+    this.replayBtn = new Button(width / 2 + 120, height / 2 + 120, 200, 60, "Replay", () => {
+      this.replay = true
+      this.close()
+    })
+  }
+  display() {
+    if(!this.visible) return
+    push()
+    translate(width / 2, height / 2)
+    scale(this.scale)
+    woodBorder(-300, -200, 600, 400)
+    textAlign(CENTER, CENTER)
+    textSize(50)
+    fill(255)
+    text(this.type === 'fuel' ? "Out of fuel" : "You crashed", 0, -100)
+    textSize(25)
+    text(this.msg, 0, 0)
+    translate(-width / 2, -height / 2)
+    this.closeBtn.run()
+    this.replayBtn.run()
+    pop()
+  }
+  setType(type) {
+    this.type = type
+    this.msg = this.messages[type].pick()
+  }
+  open() {
+    this.replay = false
+    super.open()
+  }
+}
+let gameover;
+
+
+class Cheer extends Popup {
+  constructor(t = "") {
+    super()
+    this.x = width / 2
+    this.y = height / 2
+    this.message = t
+  }
+  display() {
+    push()
+    translate(this.x, this.y)
+    scale(this.scale)
+    fill(255)
+    textSize(70)
+    stroke(100)
+    strokeWeight(10)
+    textAlign(CENTER, CENTER)
+    text(this.message, 0, 0)
+    pop()
+    if(this.time > 200 && !this.closed) {
+      this.close()
+    }
+  }
+}
+
+const CODE_CONTENT = `<!doctype html><html>${document.querySelector('html').innerHTML}</html>`
+const openInFullscreen = () => {
+   const w = window.open();
+   w.document.open();
+   w.document.write(CODE_CONTENT);
+   w.document.close();
+};
+
+class Game {
+  constructor() {
+    this.scene = window.innerWidth <= 600 ? 'window' : 'menu'
+    this.transition = {
+      started: false,
+      img: null,
+      fade: 0,
+      timer: 0,
+      begin() {
+        this.started = true
+        this.img = get()
+      },
+    }
+    this.playBtn = new Button(width / 2, height / 2, 200, 60, "Play", () => {
+      this.gameLoaded = false
+      this.goTo('game')
+    })
+    this.howBtn = new Button(width / 2, height / 2 + 100, 200, 60, "How", () => {
+      this.goTo('how')
+    })
+    this.leadBtn = new Button(width / 2, height / 2 + 200, 200, 60, "Lead", () => {
+      this.goTo('lead')
+    })
+    this.backBtn = new Button(width / 2, height * 0.8, 200, 60, "Back", () => {this.goTo('menu')})
+    this.newWindowBtn = new Button(width / 2, height / 2 - 50, 200, 60, "Yes", openInFullscreen)
+    this.noNewWindowBtn = new Button(width / 2, height / 2 + 50, 200, 60, "No", () => { this.goTo('menu') })
+    this.maxDistance = 0
+  }
+  init() {
+    console.log('loading game')
+    Matter.Composite.clear(engine.world, false, true)
+    this.truck = new Truck(200, 450)
+    this.terrain = new Terrain()
+    this.rearWall = Matter.Bodies.rectangle(-20, height / 2, 40, height, { isStatic: true })
+    Matter.Composite.add(engine.world, this.rearWall)
+    Matter.Events.on(engine, 'collisionStart', (event) => {
+      var pairs = event.pairs
+       for (var i = 0, j = pairs.length; i != j; ++i) {
+          var pair = pairs[i];
+          if (pair.bodyA.label === 'roof' && pair.bodyB.label === 'ground') {
+            this.crashed = true
+          }
+      }
+    })
+    this.crashed = false
+    this.outOfFuel = false
+    this.score = 0
+    this.metersTraveled = 0
+    this.bgDeath = null
+    cam.init()
+    fuelTank.reset()
+    popups.clearAll()
+    particles.clear()
+    this.gameLoaded = true
+    console.log('game loaded')
+  }
+  gameScene() {
+    if(!this.gameLoaded) {
+      this.init()
+    }
+
+    if(this.crashed || this.outOfFuel) {
+      if(!this.bgDeath) {
+        this.bgDeath = get()
+        gameover.open()
+        gameover.setType(this.crashed ? 'crash' : 'fuel')
+      }
+      image(this.bgDeath, 0, 0)
+      gameover.update()
+      gameover.display()
+      leaderboard.setPlayerScore(this.maxDistance)
+      if(!gameover.visible) {
+        if(gameover.replay) {
+          this.gameLoaded = false
+        }
+        this.goTo(gameover.replay ? 'game' : 'lead')
+      }
+      return;
+    }
+
+    background(0, 200, 255)
+
+    push()
+
+    // run the camera
+    cam.follow(this.truck.parts.body.position)
+    cam.bounds.minX = max(cam.edgeX, cam.bounds.minX)
+    cam.run()
+
+    // moves the wall that prevents the truck from going backwards off the screen
+    Matter.Body.translate(this.rearWall, { x: cam.edgeX - this.rearWall.position.x - 20, y: 0 })
+
+    // update the terrain
+    this.terrain.update()
+    this.terrain.display()
+  
+    if(!fuelTank.placed) {
+      let lastVertex = last(this.terrain.vertices)
+      if(lastVertex) {
+        if(lastVertex.x > fuelTank.x + fuelTank.distance) {
+          for(let i = 0; i < this.terrain.vertices.length; i++) {
+            const t = this.terrain.vertices[i]
+            if(t.x > fuelTank.x + fuelTank.distance) {
+              fuelTank.moveTo(t.x, t.y - 20)
+              fuelTank.placed = true
+              fuelTank.distance += 500
+              break;
+            }
+          }
+        }
+      }
+    }
+  
+    if(this.truck.parts.body.position.x > fuelTank.x && fuelTank.placed) {
+      fuelTank.collect()
+      this.truck.fuel = Math.min(this.truck.fuel + 50, 100)
+    }
+
+    particles.run()
+
+    if(!this.crashed) {
+      this.truck.update()
+      if(this.truck.fuel <= 0) {
+        this.outOfFuel = true
+      }
+    }else {
+      this.truck.accelerating = false
+    }
+    this.truck.display()
+
+    if(this.truck.accelerating) {
+      particles.emitFrom(10, this.truck.parts.body.position, 0, 75, this.truck.parts.body.angle + Math.PI)
+    }
+
+    if(!this.crashed && this.truck.didFlip()) {
+      popups.add(new Cheer("Nice Flip!"))
+    }
+  
+    if(fuelTank.placed) {
+      gas(fuelTank.x - 40, fuelTank.y - 40, 80)
+    }
+    pop()
+
+    textSize(40)
+    this.metersTraveled = Math.max(this.metersTraveled, Math.floor((this.truck.parts.body.position.x - 200) / 100))
+    this.maxDistance = Math.max(this.metersTraveled, this.maxDistance)
+
+    const infoText = `${this.metersTraveled}m`
+    const tw = textWidth(infoText)
+    woodBorder(800 - tw / 2 - 20 , 20, tw + 40, 60, 10)
+    fill(255)
+    noStroke()
+    textAlign(CENTER, CENTER)
+    text(infoText, 800, 55)
+
+    woodBorder(400, 100, 800, 60, 10)
+    noStroke()
+    fill(255, 150, 0)
+    rect(405, 105, map(this.truck.fuel, 0, 100, 0, 790), 50)
+    woodBorder(395, 95, 70, 70, 10)
+    gas(430, 130, 70)
+
+    popups.run()
+  }
+  howScene() {
+    background(0, 200, 255)
+    image(menuTerrain, 0, 0)
+    textAlign(CENTER, CENTER)
+    textSize(100)
+    stroke(100)
+    strokeWeight(10)
+    text("How to play", width / 2, 200)
+    textSize(50)
+    text("Use left/right arrow keys to accelerate. Press space to brake. Make it as far as you can without running out of fuel or flipping.", width / 4, 0, width / 2, height)
+    this.backBtn.run()
+  }
+  newWindowScene() {
+    background(0, 200, 255)
+    image(menuTerrain, 0, 0)
+    textAlign(CENTER, CENTER)
+    textSize(50)
+    stroke(100)
+    strokeWeight(10)
+    text("Would you like to open this in a\nlarger window? (recommended)", width / 2, 200)
+    this.newWindowBtn.run()
+    this.noNewWindowBtn.run()
+  }
+  menuScene() {
+    background(0, 200, 255)
+    image(menuTerrain, 0, 0)
+    fill(255, 255, 0)
+    textSize(100)
+    textAlign(CENTER, CENTER)
+    fill(255)
+    stroke(200, 150, 0)
+    strokeWeight(10)
+    text("Hill Climber", width / 2, 200)
+    this.playBtn.run()
+    this.howBtn.run()
+    this.leadBtn.run()
+  }
+  leadScene() {
+    background(0, 200, 255)
+    image(menuTerrain, 0, 0)
+    if(!leaderboard.visible) {
+      if(leaderboard.opened) {
+        this.goTo('menu')
+        leaderboard.opened = false
+      }else {
+        leaderboard.opened = true
+        leaderboard.open()
+      }
+    }
+    leaderboard.update()
+    leaderboard.display()
+  }
+  run() {
+    switch(this.scene) {
+      case 'game':
+        this.gameScene()
+        break;
+      case 'menu':
+        this.menuScene()
+        break;
+      case 'lead':
+        this.leadScene()
+        break;
+      case 'how':
+        this.howScene()
+        break;
+      case 'window':
+        this.newWindowScene()
+        break;
+    }
+    if(this.transition.started && this.transition.img) {
+      tint(255, 255, 255, (1 - this.transition.fade) * 255)
+      push()
+      translate(width / 2, height / 2)
+      scale(1 + this.transition.fade / 10)
+      image(this.transition.img, -width / 2, -height / 2)
+      pop()
+      noTint()
+      this.transition.fade = easeInDuo(this.transition.timer / 10)
+      this.transition.timer++
+      if(this.transition.timer > 10) {
+        this.transition.started = false
+      }
+    }else {
+      this.transition.fade = 0
+      this.transition.started = false
+      this.transition.timer = 0
+    }
+  }
+  goTo(newScene) {
+    this.transition.begin()
+    this.scene = newScene
+  }
+}
+let game;
+
+let newWindowBtn, notNewWindowBtn;
+
+function setup() {
+  createCanvas(1600, 900)
+  game = new Game()
+  gameover = new GameOver()
+  leaderboard = new Leaderboard(LEADERBOARD_SCORES)
+  clear()
+  const t = new Terrain()
+  t.update()
+  t.clear()
+  t.display()
+  menuTruck.display()
+  menuTerrain = get()
+  
+}
+
+
+function draw() {
+  mouse = { x: mouseX, y: mouseY }
+  cursor()
+  // I'm setting the font every frame because it is often not loaded yet when the setup function gets called
+  textFont('Luckiest Guy')
+  game.run()
+  clicked = false
+}
+
+function mouseClicked() {
+  clicked = true
+}
+
+console.log(window.top)
+
+
+// exposes function to global scope so p5js can access them
+Object.assign(window, { draw, setup, keyReleased, keyPressed, mouseClicked })
+
+})()
+        </script>
+	</body>
+</html>

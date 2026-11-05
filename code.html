@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRITICAL INTRUSION NODE</title>
+    <style>
+        body {
+            background-color: #000000;
+            color: #11ff22;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            box-sizing: border-box;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #launcher-screen {
+            text-align: center;
+            z-index: 10;
+        }
+
+        .menu-box {
+            border: 1px solid #11ff22;
+            padding: 40px;
+            background: rgba(0, 10, 0, 0.4);
+            box-shadow: 0 0 20px rgba(17, 255, 34, 0.2);
+        }
+
+        .menu-title {
+            font-size: 32px;
+            margin: 0 0 10px 0;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px #11ff22;
+        }
+
+        .menu-subtitle {
+            color: #88ff99;
+            font-size: 12px;
+            margin-bottom: 30px;
+        }
+
+        #start-btn {
+            background: transparent;
+            color: #ff2222;
+            border: 2px solid #ff2222;
+            padding: 20px 40px;
+            font-size: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(255, 34, 34, 0.3);
+            text-shadow: 0 0 10px #ff2222;
+            transition: all 0.2s ease;
+        }
+
+        #start-btn:hover {
+            background: #ff2222;
+            color: #000;
+            box-shadow: 0 0 40px #ff2222;
+        }
+
+        #console-container {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            padding: 25px;
+            box-sizing: border-box;
+            background-color: #050000;
+            background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.6) 50%);
+            background-size: 100% 4px;
+        }
+
+        .panic-active {
+            animation: aggressive-shake 0.1s infinite;
+        }
+
+        #terminal {
+            width: 100%;
+            height: 85vh;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+        }
+
+        #terminal::-webkit-scrollbar {
+            display: none;
+        }
+
+        .alert-banner {
+            border: 4px solid #11ff22;
+            padding: 15px;
+            background: rgba(0, 30, 0, 0.9);
+            color: #11ff22;
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 0 25px rgba(17, 255, 34, 0.4);
+            text-shadow: 0 0 10px #11ff22;
+        }
+
+        .malware-line {
+            color: #ff3333 !important;
+            text-shadow: 0 0 8px #ff0000 !important;
+        }
+
+        .glitch-heavy {
+            color: #ff6666 !important;
+            font-size: 16px;
+            letter-spacing: 3px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background: #250000;
+            border: 2px solid #ff2222;
+            height: 35px;
+            margin: 20px 0;
+            box-shadow: 0 0 20px #ff2222;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #ff2222;
+            width: 0%;
+        }
+
+        @keyframes aggressive-shake {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-5px, 4px); }
+            50% { transform: translate(4px, -4px); }
+            75% { transform: translate(-3px, -2px); }
+        }
+
+        @keyframes flash-red {
+            0% { background: rgba(50, 0, 0, 0.9); border-color: #ff2222; color: #ff2222; box-shadow: 0 0 15px #ff2222; text-shadow: 0 0 10px #ff2222; }
+            100% { background: rgba(140, 0, 0, 1); border-color: #ff2222; color: #ff2222; box-shadow: 0 0 35px #ff2222; text-shadow: 0 0 15px #ff2222; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="launcher-screen">
+        <div class="menu-box">
+            <h1 class="menu-title">SYSTEM MAINFRAME</h1>
+            <p class="menu-subtitle">SECURE TERMINAL ISOLATION PROTOCOL</p>
+            <button id="start-btn">ENGAGE SEQUENCE</button>
+        </div>
+    </div>
+
+    <div id="console-container">
+        <div class="alert-banner" id="banner">
+            🟢 STANDBY: SECURITY WORKSTATION SECURE
+        </div>
+        <div id="terminal"></div>
+    </div>
+
+<script>
+    const startBtn = document.getElementById('start-btn');
+    const launcherScreen = document.getElementById('launcher-screen');
+    const consoleContainer = document.getElementById('console-container');
+    const terminal = document.getElementById('terminal');
+    const banner = document.getElementById('banner');
+
+    const codeBlocks = [
+        { text: "[*] INITIALIZING MEMORY ALLOCATION TABLES...\n", type: "normal" },
+        { text: "#include <sys/mman.h>\n#include <pthread.h>\n#define PAGE_SIZE 4096\n#define TARGET_DESCRIPTOR 0xAF4E12\n\n", type: "normal" },
+        { text: "void* alloc_virtual_stack(unsigned long base_addr) {\n    void* map = mmap((void*)base_addr, PAGE_SIZE * 64, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);\n", type: "normal" },
+        { text: "    if (map == MAP_FAILED) {\n        return NULL;\n    }\n    return map;\n}\n\n", type: "normal" },
+        { text: "[*] HOOKING SUBSYSTEM KERNEL THREADS...\n", type: "normal" },
+        { text: "int deploy_subthread_cluster() {\n    pthread_t thread_id;\n    for(int i = 0; i < 8; i++) {\n", type: "normal" },
+        { text: "        if(pthread_create(&thread_id[i], NULL, &alloc_virtual_stack, (void*)0x7FFF0000)) {\n", type: "normal" },
+        { text: "            return -1;\n        }\n    }\n    return 0;\n}\n\n", type: "normal" },
+        { text: "[*] AUDITING DRIVER CONTROLLER INTEGRITY... [PASS]\n", type: "normal" },
+        { text: "[*] AUDITING SECURITY ARCHITECTURE PIPELINES... [PASS]\n", type: "normal" },
+        { text: "\n⚠️ WARNING: INBOUND RAW DATAGRAM DETECTED FROM ANOMALOUS SUBNET 10.66.6.x\n", type: "malware" },
+        { text: "⚠️ UNRECOGNIZED SIGNATURE FORCING SYSTEM OVERRIDE THROUGH APIC CONTROLLER\n\n", type: "malware" },
+        { text: "[-] STOPPING WINDOWS DEFENDER SERVICES... SUCCESS.\n", type: "malware" },
+        { text: "[-] CORRUPTING ANTIVIRUS CORREGISTRY SCHEDULER... SUCCESS.\n", type: "malware" },
+        { text: "[-] TERMINATING LOCAL DOMAIN ISOLATION CONTROLS [RING 0 LEVEL]...\n", type: "malware" },
+        { text: "    -> 0x00A1BC: OVERWRITING LOCAL SECURITY AUTHORITY SUBSYSTEM (LSASS.EXE)\n", type: "malware" },
+        { text: "    -> 0x00A1C0: INJECTING SHELLCODE INTO SYSTEM KERNEL RUNTIME DESCRIPTORS\n", type: "malware" },
+        { text: "    -> 0x00A1C4: STACK POINT CORRUPTION DETECTED. HEAP FOLLOWER COLLAPSED.\n\n", type: "malware" },
+        { text: "E̶R̶R̶O̶R̶:̶ ̶K̶E̶R̶N̶E̶L̶_̶S̶E̶C̶U̶R̶I̶T̶Y̶_̶C̶H̶E̶C̶K̶_̶F̶A̶I̶L̶U̶R̶E̶ ̶(̶0̶x̶0̶0̶0̶0̶0̶1̶3̶9̶)̶\n", type: "glitch" },
+        { text: "S̶Y̶S̶T̶E̶M̶ ̶M̶E̶M̶O̶R̶Y̶ ̶D̶U̶M̶P̶I̶N̶G̶ ̶I̶N̶T̶O̶ ̶H̶O̶S̶T̶A̶G̶E̶ ̶S̶E̶C̶T̶O̶R̶S̶.̶.̶.̶\n", type: "glitch" },
+        { text: "A̶L̶L̶ ̶F̶I̶L̶E̶S̶ ̶I̶N̶ ̶C̶:̶\\̶U̶S̶E̶R̶S̶\\̶ ̶A̶R̶E̶ ̶N̶O̶W̶ ̶B̶E̶I̶N̶G̶ ̶P̶A̶C̶K̶E̶D̶ ̶A̶N̶D̶ ̶L̶O̶C̶K̶E̶D̶\n\n", type: "glitch" },
+        { text: "☣️ SYSTEM RESTRUCTURING ENGINE LAUNCHED:\n", type: "malware" },
+        { text: "LOAD_BAR_TARGET", type: "special" },
+        { text: "\n[!] UNREGISTERING USER RIGHTS...\n", type: "malware" },
+        { text: "[!] KILLING GRAPHICAL SUBSYSTEM RECOVERY DRIVERS...\n", type: "malware" },
+        { text: "\n💥 CRITICAL TAKEOVER COMPLETE. MASTER ACCESS GRANTED TO SECTOR 7 RANSOM NODE. 💥\n", type: "malware" }
+    ];
+
+    let currentLineIndex = 0;
+    let currentCharIndex = 0;
+
+    startBtn.addEventListener('click', () => {
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen();
+        } else if (document.documentElement.mozRequestFullScreen) {
+            document.documentElement.mozRequestFullScreen();
+        }
+
+        launcherScreen.style.display = 'none';
+        consoleContainer.style.display = 'block';
+        printExtendedChaos();
+    });
+
+    function printExtendedChaos() {
+        if (currentLineIndex < codeBlocks.length) {
+            let currentItem = codeBlocks[currentLineIndex];
+            let textData = currentItem.text;
+            let char = textData[currentCharIndex];
+
+            if (currentItem.type === "malware") {
+                banner.innerText = "⚠️ CRITICAL BREACH: MEMORY INTRUSION IN PROGRESS";
+                banner.style.animation = "flash-red 0.3s infinite alternate";
+                terminal.innerHTML += `<span class="malware-line">${char}</span>`;
+            } else if (currentItem.type === "glitch") {
+                document.body.classList.add('panic-active');
+                terminal.innerHTML += `<span class="glitch-heavy">${char}</span>`;
+            } else if (currentItem.type === "special" && textData === "LOAD_BAR_TARGET") {
+                terminal.innerHTML += `
+                    <div class="progress-bar">
+                        <div id="fill" class="progress-fill"></div>
+                    </div>
+                    <div style="font-size:18px; text-align:center; color:#ff3333;" id="percent-text">0% ARCHITECTURE EXFILTRATION</div>\n
+                `;
+                runProgressBarTracker();
+                return; 
+            } else {
+                terminal.innerHTML += char;
+            }
+
+            currentCharIndex++;
+            terminal.scrollTop = terminal.scrollHeight;
+
+            if (currentCharIndex >= textData.length) {
+                currentLineIndex++;
+                currentCharIndex = 0;
+                setTimeout(printExtendedChaos, 150); 
+            } else {
+                let velocity = currentItem.type === "glitch" ? 5 : Math.random() * 25 + 10;
+                setTimeout(printExtendedChaos, velocity);
+            }
+        }
+    }
+
+    function runProgressBarTracker() {
+        let fill = document.getElementById('fill');
+        let text = document.getElementById('percent-text');
+        let percentage = 0;
+
+        let progressInterval = setInterval(() => {
+            percentage += Math.floor(Math.random() * 8) + 2;
+            if (percentage > 100) percentage = 100;
+
+            fill.style.width = percentage + '%';
+            text.innerText = percentage + '% ARCHITECTURE EXFILTRATION';
+
+            if (percentage >= 100) {
+                clearInterval(progressInterval);
+                currentLineIndex++; 
+                setTimeout(printExtendedChaos, 400);
+            }
+        }, 90);
+    }
+</script>
+</body>
+</html>
