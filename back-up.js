@@ -1,4 +1,5 @@
-    $(document).ready(function() {
+import $ from "jquery.min.js"
+      $(document).ready(function() {
       
       // Monitor page scroll depth
       $(window).on('scroll', function() {
