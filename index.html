@@ -101,24 +101,29 @@
 </head>
 <body>
     <script>
-      $(document).ready(function() {
-      
-      // Monitor page scroll depth
-      $(window).on('scroll', function() {
-        if ($(this).scrollTop() > 300) {
-          $('#backToTop').fadeIn(200); // Reveal button
-        } else {
-          $('#backToTop').fadeOut(200); // Hide button
-        }
-      });
+        document.addEventListener('DOMContentLoaded', () => {
+  const backToTopBtn = document.getElementById('backToTop');
 
-      // Handle button click action
-      $('#backToTop').on('click', function() {
-        // Animate html/body scroll position smoothly back to zero
-        $('html, body').animate({ scrollTop: 0 }, 500);
-      });
+  // Monitor page scroll depth
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 300) {
+      backToTopBtn.style.opacity = '1';
+      backToTopBtn.style.pointerEvents = 'auto';
+    } else {
+      backToTopBtn.style.opacity = '0';
+      backToTopBtn.style.pointerEvents = 'none';
+    }
+  });
 
+  // Handle button click action
+  backToTopBtn.addEventListener('click', () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
     });
+  });
+});
+
   
     </script>
     <script>
