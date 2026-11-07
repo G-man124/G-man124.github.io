@@ -1,3 +1,13 @@
+:root {
+    --jungle-deep: #1e3f20;
+    --jungle-bright: #2ed573;
+    --safari-gold: #ffa502;
+    --safari-khaki: #f1f2f6;
+    --sunset-orange: #ff4757;
+    --wood-brown: #8b5a2b;
+    --card-bg: rgba(255, 255, 255, 0.93);
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -5,75 +15,253 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #1e1e2f, #111119);
+    background: radial-gradient(circle at center, #2ecc71 0%, var(--jungle-deep) 100%);
+    color: #2f3542;
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding: 35px 20px;
+    font-family: 'Fredoka One', cursive;
+}
+
+/* Safari Basecamp Shield Container Setup */
+.safari-basecamp {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: var(--card-bg);
+    border-radius: 35px;
+    padding: 50px 30px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border: 8px solid var(--wood-brown);
+    text-align: center;
+    position: relative;
+}
+
+.safari-title {
+    font-family: 'Luckiest Guy', cursive;
+    font-size: 3.5rem;
+    color: var(--sunset-orange);
+    text-shadow: 3px 3px 0px var(--safari-gold);
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    animation: jungleBounce 2s infinite ease-in-out;
+}
+
+.safari-subtitle {
+    font-size: 1.3rem;
+    color: var(--jungle-deep);
+    margin-bottom: 45px;
+}
+
+/* Playful Wooden Marimba Launch Button Elements */
+.safari-btn {
+    background: linear-gradient(135deg, var(--wood-brown) 0%, #a0522d 100%);
     color: #ffffff;
+    border: none;
+    padding: 20px 45px;
+    font-size: 1.3rem;
+    font-family: 'Fredoka One', cursive;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2), inset 0 -5px 0px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+    margin-bottom: 50px;
+    display: inline-flex;
+    align-items: center;
+    gap: 15px;
+    border: 3px solid var(--safari-gold);
+}
+
+.safari-btn:hover {
+    transform: scale(1.05) translateY(-3px);
+    box-shadow: 0 15px 25px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, var(--jungle-bright) 0%, var(--jungle-deep) 100%);
+}
+
+.safari-btn:active {
+    transform: scale(0.97) translateY(0);
+}
+
+.btn-icon {
+    font-size: 1.8rem;
+}
+
+/* Safari Expedition Layout Grid */
+.safari-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.safari-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 25px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    border: 4px solid var(--jungle-bright);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    overflow: hidden;
+    transition: transform 0.3s ease;
 }
 
-.container {
-    text-align: center;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 25px;
+.safari-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.12);
+}
+
+.safari-card h3 {
+    font-size: 1.2rem;
+    color: var(--jungle-deep);
+    margin-bottom: 20px;
+    width: 100%;
+    text-align: left;
+    border-left: 6px solid var(--safari-gold);
+    padding-left: 12px;
+}
+
+/* Interactive Viewport Layout Frames */
+.safari-viewport {
+    width: 100%;
+    height: 250px;
+    background: #f7f9fa;
     border-radius: 16px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-h1 {
-    font-size: 1.8rem;
-    margin-bottom: 15px;
-    letter-spacing: 1px;
-    color: #4ed9ff;
-}
-
-canvas {
-    background-color: #1a1a24;
-    border-radius: 8px;
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-    border: 2px solid #333344;
-    display: block;
-    margin: 0 auto 20px auto;
-}
-
-.controls {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-button {
-    background: #2a2a40;
-    color: white;
-    border: 2px solid #4ed9ff;
-    padding: 10px 20px;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    outline: none;
+    border: 2px dashed rgba(0, 0, 0, 0.1);
 }
 
-button:hover {
-    background: #4ed9ff;
-    color: #111119;
-    box-shadow: 0 0 12px rgba(78, 217, 255, 0.5);
-    transform: translateY(-2px);
+#safariScore {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    font-size: 0.9rem;
+    color: var(--jungle-deep);
+    z-index: 10;
 }
 
-button:active {
-    transform: translateY(0);
+#cakeTarget {
+    width: 65px;
+    height: 65px;
+    position: absolute;
+    font-size: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: all 0.15s ease-out;
 }
 
-button.active {
-    background: #4ed9ff;
-    color: #111119;
+.safari-iframe-wrapper {
+    width: 100%;
+    height: 250px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 3px solid var(--wood-brown);
+}
+
+.safari-iframe-wrapper iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.safari-pop-viewport {
+    width: 100%;
+    height: 250px;
+    background: #f7f9fa;
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+    border: 2px dashed rgba(0, 0, 0, 0.1);
+}
+
+.safari-balloon {
+    width: 38px;
+    height: 38px;
+    position: absolute;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    bottom: -50px;
+    cursor: pointer;
+    animation: safariFloatUp 4s linear infinite;
+    user-select: none;
+}
+
+/* Custom Logs and Gravity Sandbox Layouts */
+.timeline-logs {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 20px 0;
+}
+
+.log-stat {
+    font-size: 1.1rem;
+    color: #747d8c;
+}
+
+.log-counter {
+    font-family: 'Luckiest Guy', cursive;
+    font-size: 2.5rem;
+    color: var(--sunset-orange);
+    margin: 15px 0;
+}
+
+.log-stat-sub {
+    font-size: 1rem;
+    color: var(--wood-brown);
+}
+
+.gravity-sandbox {
+    width: 100%;
+    height: 250px;
+    background: #f7f9fa;
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+    border: 2px dashed rgba(0, 0, 0, 0.1);
+}
+
+.sandbox-instructions {
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #a4b0be;
+    pointer-events: none;
+}
+
+.fruit-particle {
+    position: absolute;
+    font-size: 22px;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Mechanical Keyframe Logic Animations */
+@keyframes jungleBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+@keyframes safariFloatUp {
+    0% { bottom: -50px; opacity: 1; transform: scale(0.9) rotate(0deg); }
+    100% { bottom: 270px; opacity: 0; transform: scale(1) rotate(45deg); }
+}
+
+#confetti-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
 }
