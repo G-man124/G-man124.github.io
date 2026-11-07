@@ -1,1 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Stick Man Animator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Stick Man Animator</h1>
+        <canvas id="animationCanvas" width="400" height="300"></canvas>
+        <div class="controls">
+            <button id="btn-idle" class="active" onclick="setAnimation('idle')">Nothing</button>
+            <button id="btn-walk" onclick="setAnimation('walk')">Walk</button>
+            <button id="btn-dance" onclick="setAnimation('dance')">Dance</button>
+            <button id="btn-wave" onclick="setAnimation('wave')">Wave</button>
+            <button id="btn-wave" onclick="setAnimation('jump')">Jump</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
 
