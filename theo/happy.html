@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Prevents zooming and scrolling on mobile devices while dragging -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Happy Birthday Interactive Canvas</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #121212;
+      /* Crucial for phones: stops the screen from scrolling when touching/dragging */
+      touch-action: none; 
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="birthdayCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('birthdayCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Target position (where the mouse or finger is)
+    let target = {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2
+    };
+
+    // Current position of the text (starts at center)
+    let current = {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2
+    };
+
+    // Handle screen resizing & high-DPI (Retina) mobile screens
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.scale(dpr, dpr);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // --- COMPUTER: Mouse Movement ---
+    window.addEventListener('mousemove', (e) => {
+      target.x = e.clientX;
+      target.y = e.clientY;
+    });
+
+    // --- PHONE/TABLET: Touch Movement ---
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 0) {
+        target.x = e.touches[0].clientX;
+        target.y = e.touches[0].clientY;
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      e.preventDefault(); // Prevents default mobile pull-to-refresh/scrolling
+      if (e.touches.length > 0) {
+        target.x = e.touches[0].clientX;
+        target.y = e.touches[0].clientY;
+      }
+    }, { passive: false });
+
+    // Animation Loop
+    let hue = 0;
+
+    function animate() {
+      // Create a slight trailing fade effect on the background
+      ctx.fillStyle = 'rgba(18, 18, 18, 0.25)';
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+      // Smoothly ease the text toward the mouse/finger position
+      const ease = 0.08;
+      current.x += (target.x - current.x) * ease;
+      current.y += (target.y - current.y) * ease;
+
+      // Responsive font size (scales down nicely on narrow phone screens)
+      const fontSize = Math.max(28, Math.min(window.innerWidth * 0.08, 72));
+      ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Cycle through vibrant rainbow colors
+      hue = (hue + 1) % 360;
+      const color = `hsl(${hue}, 90%, 65%)`;
+
+      // Glowing text styling
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 15;
+      ctx.fillStyle = '#ffffff';
+
+      // Draw the text
+      ctx.fillText('🎉 Happy Birthday! 🎂', current.x, current.y);
+
+      // Reset shadow so it doesn't affect the background clear
+      ctx.shadowBlur = 0;
+
+      requestAnimationFrame(animate);
+    }
+
+    // Start animation
+    animate();
+  </script>
+</body>
+</html>
