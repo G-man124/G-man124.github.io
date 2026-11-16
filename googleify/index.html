@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Googleify</title>
+  <link href="https://googleapis.com" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="https://www.google.com/favicon.ico">
+  <style>
+    .googleify {
+      font-family: 'Poppins', Arial, sans-serif;
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      display: inline-block;
+    }
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100vh; 
+      margin: 0;
+      text-align: center; 
+    }
+
+    .neon-input {
+    width: 260px;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-family: system-ui, sans-serif;
+    color: #f8fafc;
+    background-color: #ffffff;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    outline: none;
+    transition: all 0.25s ease;
+  }
+
+  .neon-input::placeholder {
+    color: #64748b;
+  }
+
+  .neon-input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.2);
+  }
+  .neon-btn {
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: system-ui, sans-serif;
+    letter-spacing: 0.5px;
+    color: #38bdf8;
+    background-color: #ffffff;
+    border: 1px solid #38bdf8;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.15), inset 0 0 8px rgba(56, 189, 248, 0.1);
+    transition: all 0.25s ease;
+  }
+
+  .neon-btn:hover {
+    color: #0f172a;
+    background-color: #38bdf8;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), 0 0 40px rgba(56, 189, 248, 0.25);
+    transform: translateY(-1px);
+  }
+
+  .neon-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  }
+
+  .pill-btn {
+  display: inline-block;
+  padding: 10px 22px;
+  background-color: #111;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 999px;
+  font-weight: 500;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.pill-btn:hover {
+  background-color: #3b82f6;
+  transform: translateY(-2px);
+}
+
+
+  </style>
+</head>
+<body>
+
+  <h1 id="output" class="googleify" style="font-size: 72px;"></h1>
+
+  <form id="googleify-form">
+    <input type="text" id="input" class="neon-input" placeholder="Enter text..." style="color: black;">
+    <button type="submit" class="neon-btn">Submit</button>
+  </form>
+
+  <p id="link-container"></p>
+
+  <script>
+    const googleColors = ['#4285F4', '#EA4335', '#FBBC05', '#4285F4', '#34A853', '#EA4335'];
+
+    function applyGoogleify(element, text) {
+      element.setAttribute('aria-label', text);
+      element.innerHTML = '';
+      let colorIndex = 0;
+
+      for (const char of text) {
+        if (char === ' ') {
+          element.appendChild(document.createTextNode(' '));
+        } else {
+          const span = document.createElement('span');
+          span.textContent = char;
+          span.style.color = googleColors[colorIndex % googleColors.length];
+          element.appendChild(span);
+          colorIndex++;
+        }
+      }
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const urlText = params.get('text');
+    const customText = urlText || 'Googleify';
+
+    const form = document.getElementById('googleify-form');
+    const tagInput = document.getElementById('input');
+    const heading = document.getElementById('output');
+    const linkContainer = document.getElementById('link-container');
+
+    // Initial render
+    applyGoogleify(heading, customText);
+
+    // Hide input immediately if loaded from a shared URL with ?text=
+    if (urlText) {
+      form.style.display = 'none';
+    }
+
+    // Handle form submission
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newText = tagInput.value.trim() || 'Googleify';
+      applyGoogleify(heading, newText);
+
+      // Hide the input form after submitting
+      form.style.display = 'none';
+
+      // Safely build a shareable URL
+      const url = new URL(window.location.href);
+      url.searchParams.set('text', newText);
+
+      linkContainer.innerHTML = '';
+      const link = document.createElement('a');
+      link.classList.add('pill-btn');
+      link.style = "color: white; text-decoration: underline;";
+      link.href = url.toString();
+      link.textContent = 'Share this Googleified text';
+      linkContainer.appendChild(link);
+    });
+  </script>
+    <footer>
+        <p>&copy; 2026 Grayson Ogus. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>
