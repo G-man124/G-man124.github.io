@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Countdown Timer</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f4f4f9;
+    }
+    .timer-container {
+      background: #ffffff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    .inputs {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+    }
+    input {
+      width: 65px;
+      padding: 8px;
+      font-size: 1.25rem;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    label {
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 4px;
+    }
+    .display {
+      font-size: 3rem;
+      font-weight: bold;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 1.5rem;
+      color: #222;
+    }
+    .controls button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 0 4px;
+      color: white;
+    }
+    #startBtn { background-color: #28a745; }
+    #pauseBtn { background-color: #ffc107; color: #222; }
+    #resetBtn { background-color: #dc3545; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<div class="timer-container">
+  <div class="inputs">
+    <div class="input-group">
+      <input type="number" id="hoursInput" min="0" max="99" value="0">
+      <label for="hoursInput">Hours</label>
+    </div>
+    <div class="input-group">
+      <input type="number" id="minutesInput" min="0" max="59" value="1">
+      <label for="minutesInput">Minutes</label>
+    </div>
+    <div class="input-group">
+      <input type="number" id="secondsInput" min="0" max="59" value="30">
+      <label for="secondsInput">Seconds</label>
+    </div>
+  </div>
+
+  <div class="display" id="timerDisplay">00:01:30</div>
+
+  <div class="controls">
+    <button id="startBtn">Start</button>
+    <button id="pauseBtn" disabled>Pause</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+</div>
+
+<script>
+  const hoursInput = document.getElementById('hoursInput');
+  const minutesInput = document.getElementById('minutesInput');
+  const secondsInput = document.getElementById('secondsInput');
+  const timerDisplay = document.getElementById('timerDisplay');
+  const startBtn = document.getElementById('startBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
+
+  let totalSeconds = 90;
+  let intervalId = null;
+
+  // Format and render HH:MM:SS
+  function updateDisplay(secondsLeft) {
+    const hrs = Math.floor(secondsLeft / 3600);
+    const mins = Math.floor((secondsLeft % 3600) / 60);
+    const secs = secondsLeft % 60;
+
+    const formatted = [
+      String(hrs).padStart(2, '0'),
+      String(mins).padStart(2, '0'),
+      String(secs).padStart(2, '0')
+    ].join(':');
+
+    timerDisplay.textContent = formatted;
+  }
+
+  // Read values from inputs and sync display
+  function syncFromInputs() {
+    const h = Math.max(0, parseInt(hoursInput.value) || 0);
+    const m = Math.max(0, parseInt(minutesInput.value) || 0);
+    const s = Math.max(0, parseInt(secondsInput.value) || 0);
+    totalSeconds = (h * 3600) + (m * 60) + s;
+    updateDisplay(totalSeconds);
+  }
+  function speak(text) {
+      // Stop any speech currently playing
+      window.speechSynthesis.cancel();
+
+      // Create a new speech object and speak it
+      const utterance = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(utterance);
+    }
+  function startTimer() {
+    if (intervalId !== null) return;
+    if (totalSeconds <= 0) syncFromInputs();
+    if (totalSeconds <= 0) return;
+
+    toggleInputs(true);
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+
+    intervalId = setInterval(() => {
+      totalSeconds--;
+      updateDisplay(totalSeconds);
+
+      if (totalSeconds <= 0) {
+        clearInterval(intervalId);
+        intervalId = null;
+        toggleInputs(false);
+        startBtn.disabled = false;
+        pauseBtn.disabled = true;
+        speak("Attention, Timer has finished! Attention, Timer has finished!");
+      }
+    }, 1000);
+  }
+
+  function pauseTimer() {
+    clearInterval(intervalId);
+    intervalId = null;
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+  }
+
+  function resetTimer() {
+    pauseTimer();
+    toggleInputs(false);
+    syncFromInputs();
+  }
+
+  function toggleInputs(disabled) {
+    hoursInput.disabled = disabled;
+    minutesInput.disabled = disabled;
+    secondsInput.disabled = disabled;
+  }
+
+  // Update preview live when user edits inputs
+  [hoursInput, minutesInput, secondsInput].forEach(input => {
+    input.addEventListener('input', syncFromInputs);
+  });
+
+  startBtn.addEventListener('click', startTimer);
+  pauseBtn.addEventListener('click', pauseTimer);
+  resetBtn.addEventListener('click', resetTimer);
+</script>
+
+</body>
+</html>
