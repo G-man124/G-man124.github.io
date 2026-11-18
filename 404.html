@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 - Page Not Found</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 20px;
+    }
+    .glitch {
+      font-size: 6rem;
+      font-weight: bold;
+      color: #58a6ff;
+      text-shadow: 2px 2px #f85149, -2px -2px #3fb950;
+      animation: glitch 1.5s infinite alternate;
+    }
+    @keyframes glitch {
+      0% { transform: skew(0deg); }
+      20% { transform: skew(-3deg); }
+      40% { transform: skew(3deg); }
+      100% { transform: skew(0deg); }
+    }
+    p {
+      margin: 16px 0 28px;
+      font-size: 1.1rem;
+      color: #8b949e;
+    }
+    a {
+      text-decoration: none;
+      color: #0d1117;
+      background-color: #58a6ff;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: background-color 0.2s ease;
+    }
+    a:hover { background-color: #79c0ff; }
+  </style>
+</head>
+<body>
+  <div class="glitch">404</div>
+  <p>Error: This directory doesn't exist</p>
+  <a href="/">Go Home</a>
+</body>
+</html>
