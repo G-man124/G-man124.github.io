@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Grayson's Website</title>
+  <script>
+    if (window.top !== window.self) {
+      document.addEventListener("DOMContentLoaded", function() {
+        document.body.innerHTML = '<h1 style="color: red; height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; text-align: center;"><a href="https://g-man124.github.io" style=\"color: red;\">G-man124.github.io</a>&nbsp;cannot be embedded in an iframe.</h1>';
+      });
+    }
+  </script>
   <meta name="robots" content="noindex, nofollow">
   <meta name="author" content="Grayson Ogus">
   <meta name="description" content="Welcome to Grayson's Website! Explore cool HTML projects, games, and coding experiments.">
