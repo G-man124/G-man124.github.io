@@ -80,8 +80,8 @@
 
       if (userInput === currentCaptcha) {
         status.style.color = "green";
-        status.innerHTML = "<p>Verified! Redirecting...\nIf you are not redirected, click here: <a href='https://g-man124.github.io'>https://g-man124.github.io</a></p>";
-        window.location.href = "https://g-man124.github.io";
+        status.innerHTML = "<p>Verified! Redirecting...\nIf you are not redirected, click here: <a href='/'>https://g-man124.github.io</a></p>";
+        window.location.href = "/";
       } else {
         status.style.color = "red";
         status.textContent = "Incorrect. Try again.";
