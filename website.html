@@ -21,9 +21,36 @@
   <meta property="og:type" content="website">
   <meta name="google-site-verification" content="WU-jumuDKgs_UOfFuKQvNHWm8jFt6NKe8z2YQ8PU3s0">
   <link rel="icon" type="image/png" href="computer.png">
-  <!-- Keep your existing <style> tag here -->
+  <style>
+  #custom-menu {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    width: 180px;
+    background: #ffffff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+  }
 
+  .menu-item {
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+  }
 
+  .menu-item:hover {
+    background-color: #f0f0f0;
+  }
+
+  .menu-divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 4px 0;
+  }
+</style>
 <style>
 :root {
     --bg: #080b16;
@@ -237,6 +264,12 @@ footer span { color: var(--accent); }
 }
 </style>
 </head>
+    <div id="custom-menu">
+    <div class="menu-item" onclick="alert('Copied!')">Copy</div>
+    <div class="menu-item" onclick="alert('Pasted!')">Paste</div>
+    <div class="menu-divider"></div>
+    <div class="menu-item" onclick="location.reload()">Reload Page</div>
+  </div>
 
 <body>
 <header>
@@ -702,6 +735,35 @@ footer span { color: var(--accent); }
     draw();
 })();
 </script>
+    <script>
+    const menu = document.getElementById('custom-menu');
+
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+
+      menu.style.display = 'block';
+
+      const menuWidth = menu.offsetWidth;
+      const menuHeight = menu.offsetHeight;
+      const x = (e.clientX + menuWidth > window.innerWidth) 
+        ? window.innerWidth - menuWidth - 5 
+        : e.clientX;
+      const y = (e.clientY + menuHeight > window.innerHeight) 
+        ? window.innerHeight - menuHeight - 5 
+        : e.clientY;
+
+      menu.style.left = `${x}px`;
+      menu.style.top = `${y}px`;
+    });
+
+    document.addEventListener('click', () => {
+      menu.style.display = 'none';
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') menu.style.display = 'none';
+    });
+  </script>
   <script>(function() {const params = new URLSearchParams(window.location.search); if (params.get("comic") === "true") {document.body.style.fontFamily = "'Comic Sans MS', 'Chalkboard SE', cursive";}})();</script>
 </body>
 </html>
