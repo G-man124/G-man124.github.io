@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js 3D Mansion Explorer</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.82);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      z-index: 10;
+    }
+    #overlay h1 {
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+      font-size: 2.2rem;
+    }
+    #overlay p {
+      color: #cbd5e1;
+      max-width: 500px;
+      line-height: 1.5;
+    }
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.65);
+      color: #f8fafc;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.155.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="overlay">
+    <h1>THE GRAND MANSION</h1>
+    <p>Click anywhere to enter</p>
+    <p><strong>WASD</strong> = Walk &nbsp;|&nbsp; <strong>SHIFT</strong> = Sprint &nbsp;|&nbsp; <strong>SPACE</strong> = Jump &nbsp;|&nbsp; <strong>ESC</strong> = Pause</p>
+  </div>
+  <div id="hud">Location: <span id="room-name">Front Courtyard</span></div>
+  <div id="crosshair"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    // --- 1. SCENE, CAMERA & RENDERER ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x93c5fd);
+    scene.fog = new THREE.Fog(0x93c5fd, 35, 140);
+
+    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 300);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // --- 2. LIGHTING ---
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x475569, 0.75);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.1);
+    sunLight.position.set(35, 55, 40);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.left = -45;
+    sunLight.shadow.camera.right = 45;
+    sunLight.shadow.camera.top = 45;
+    sunLight.shadow.camera.bottom = -45;
+    scene.add(sunLight);
+
+    function addInteriorLight(x, y, z, color = 0xffedd5, intensity = 1.4, distance = 22) {
+      const light = new THREE.PointLight(color, intensity, distance);
+      light.position.set(x, y, z);
+      scene.add(light);
+
+      // Ceiling fixture bulb visual
+      const fixture = new THREE.Mesh(
+        new THREE.SphereGeometry(0.25, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xfef3c7 })
+      );
+      fixture.position.set(x, y + 0.35, z);
+      scene.add(fixture);
+    }
+
+    // --- 3. MATERIALS ---
+    const mat = {
+      grass: new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 }),
+      stonePath: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 }),
+      exteriorWall: new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 }),
+      interiorWall: new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.7 }),
+      trim: new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }),
+      woodFloor: new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.55 }),
+      tileFloor: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3 }),
+      carpet: new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.9 }),
+      darkWood: new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.5 }),
+      sofaFabric: new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 }),
+      bedSheet: new THREE.MeshStandardMaterial({ color: 0xfef2f2, roughness: 0.8 }),
+      bedBlanket: new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.85 }),
+      porcelain: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }),
+      water: new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, transparent: true, opacity: 0.75 }),
+      gold: new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.6, roughness: 0.3 }),
+      roof: new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }),
+      glass: new THREE.MeshStandardMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.35, roughness: 0.1 })
+    };
+
+    // --- 4. COLLISION SYSTEM (NO PHYSICS ENGINE) ---
+    const wallColliders = []; // Horizontal AABB obstacles
+    const floorSurfaces = []; // Walkable floors & stairs
+
+    function createBox(w, h, d, x, y, z, material, { solid = true, walkable = false, castShadow = true } = {}) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      const minX = x - w / 2, maxX = x + w / 2;
+      const minY = y - h / 2, maxY = y + h / 2;
+      const minZ = z - d / 2, maxZ = z + d / 2;
+
+      if (solid) {
+        wallColliders.push({ minX, maxX, minY, maxY, minZ, maxZ });
+      }
+      if (walkable) {
+        floorSurfaces.push({ minX, maxX, topY: maxY, minZ, maxZ });
+      }
+      return mesh;
+    }
+
+    // Helpers to build walls with doorway cutouts
+    function buildDoorWallZ(x, yBase, height, zStart, zEnd, doorZCenter, doorWidth, doorHeight, material) {
+      const thickness = 0.5;
+      const z1End = doorZCenter - doorWidth / 2;
+      const z2Start = doorZCenter + doorWidth / 2;
+
+      if (z1End > zStart) {
+        const len = z1End - zStart;
+        createBox(thickness, height, len, x, yBase + height / 2, zStart + len / 2, material);
+      }
+      if (zEnd > z2Start) {
+        const len = zEnd - z2Start;
+        createBox(thickness, height, len, x, yBase + height / 2, z2Start + len / 2, material);
+      }
+      const headerH = height - doorHeight;
+      if (headerH > 0) {
+        createBox(thickness, headerH, doorWidth, x, yBase + doorHeight + headerH / 2, doorZCenter, material);
+      }
+    }
+
+    function buildDoorWallX(z, yBase, height, xStart, xEnd, doorXCenter, doorWidth, doorHeight, material) {
+      const thickness = 0.5;
+      const x1End = doorXCenter - doorWidth / 2;
+      const x2Start = doorXCenter + doorWidth / 2;
+
+      if (x1End > xStart) {
+        const len = x1End - xStart;
+        createBox(len, height, thickness, xStart + len / 2, yBase + height / 2, z, material);
+      }
+      if (xEnd > x2Start) {
+        const len = xEnd - xStart;
+        createBox(len, height, thickness, x2Start + len / 2, yBase + height / 2, z, material);
+      }
+      const headerH = height - doorHeight;
+      if (headerH > 0) {
+        createBox(doorWidth, headerH, thickness, doorXCenter, yBase + doorHeight + headerH / 2, z, material);
+      }
+    }
+
+    // --- 5. GROUNDS & EXTERIOR ---
+    // Lawn
+    createBox(180, 0.5, 180, 0, -0.25, 0, mat.grass, { solid: false, walkable: true, castShadow: false });
+    // Front Walkway
+    createBox(6, 0.1, 24, 0, 0.05, 24, mat.stonePath, { solid: false, walkable: true, castShadow: false });
+
+    // Mansion Dimensions: Width X = 32 (-16 to 16), Depth Z = 24 (-12 to 12), Floor 1 Y = 0..5, Floor 2 Y = 5..10
+    const W = 32, D = 24, H1 = 5, H2 = 5;
+
+    // Ground Floor Slab
+    createBox(W, 0.4, D, 0, 0.2, 0, mat.woodFloor, { solid: false, walkable: true });
+    // Front Porch Steps
+    createBox(7, 0.2, 3, 0, 0.1, 13.5, mat.stonePath, { solid: false, walkable: true });
+    createBox(6.5, 0.35, 1.8, 0, 0.175, 12.6, mat.stonePath, { solid: false, walkable: true });
+
+    // Entrance Columns
+    for (const cx of [-3.2, 3.2]) {
+      createBox(0.7, 9.5, 0.7, cx, 4.75, 13.5, mat.exteriorWall);
+    }
+    // Portico Balcony Roof
+    createBox(8, 0.4, 3.5, 0, 9.6, 13.2, mat.trim);
+
+    // --- 6. EXTERIOR WALLS ---
+    // Back Wall (Z = -12)
+    createBox(W, H1 + H2, 0.6, 0, (H1 + H2) / 2, -12, mat.exteriorWall);
+    // Left Wall (X = -16)
+    createBox(0.6, H1 + H2, D, -16, (H1 + H2) / 2, 0, mat.exteriorWall);
+    // Right Wall (X = 16)
+    createBox(0.6, H1 + H2, D, 16, (H1 + H2) / 2, 0, mat.exteriorWall);
+    // Front Wall Floor 1 (with grand double doorway X = -2.2 to 2.2, height 3.6)
+    buildDoorWallX(12, 0, H1, -16, 16, 0, 4.4, 3.6, mat.exteriorWall);
+    // Front Wall Floor 2
+    createBox(W, H2, 0.6, 0, H1 + H2 / 2, 12, mat.exteriorWall);
+
+    // Decorative Windows (Exterior glass panels)
+    for (const wx of [-10, -6, 6, 10]) {
+      createBox(2.4, 2.2, 0.7, wx, 2.4, 12, mat.glass, { solid: false });
+      createBox(2.4, 2.2, 0.7, wx, 7.4, 12, mat.glass, { solid: false });
+      createBox(2.4, 2.2, 0.7, wx, 2.4, -12, mat.glass, { solid: false });
+      createBox(2.4, 2.2, 0.7, wx, 7.4, -12, mat.glass, { solid: false });
+    }
+
+    // --- 7. FIRST FLOOR ROOMS (Y = 0.4 to 5.0) ---
+    // Left Interior Wall (X = -5) with doorway at Z = 4
+    buildDoorWallZ(-5, 0.4, H1 - 0.4, -12, 12, 4, 3.0, 3.2, mat.interiorWall);
+    // Right Interior Wall (X = 5) with doorway at Z = 4
+    buildDoorWallZ(5, 0.4, H1 - 0.4, -12, 12, 4, 3.0, 3.2, mat.interiorWall);
+// Kitchen / Dining Divider (Z = 0, X = 5 to 16) with doorway at X = 10.5
+buildDoorWallX(0, 0.4, H1 - 0.4, 5, 16, 10.5, 3.0, 3.2, mat.interiorWall);
+// Foyer Red Carpet Runner
+createBox(3.6, 0.05, 16, 0, 0.42, 3.5, mat.carpet, { solid: false });
+// Grand Staircase (Center-Back: X = -2.2 to 2.2, climbing from Z = -2.5 to Z = -10.5)
+const numSteps = 16;
+const startY = 0.4;
+const endY = 5.2;
+const stepH = (endY - startY) / numSteps;
+const stepD = 0.52;
+for (let i = 0; i < numSteps; i++) {
+const sy = startY + (i + 1) * stepH;
+const sz = -2.5 - i * stepD;
+createBox(4.2, stepH, stepD + 0.1, 0, sy - stepH / 2, sz, mat.darkWood, { solid: false, walkable: true });
+}
+// Stair Railings
+createBox(0.2, 1.2, 8.5, -2.1, 3.4, -6.5, mat.darkWood);
+createBox(0.2, 1.2, 8.5, 2.1, 3.4, -6.5, mat.darkWood);
+// --- 8. SECOND FLOOR SLAB & ROOMS (Y = 5.2 to 10.0) ---
+createBox(13.6, 0.4, D, -9.2, 5.0, 0, mat.woodFloor, { solid: true, walkable: true }); // Left section
+createBox(13.6, 0.4, D, 9.2, 5.0, 0, mat.woodFloor, { solid: true, walkable: true });  // Right section
+createBox(4.8, 0.4, 14.2, 0, 5.0, 4.9, mat.woodFloor, { solid: true, walkable: true }); // Front landing
+// Stairwell Safety Railings on Floor 2
+createBox(0.2, 1.1, 9.3, -2.3, 5.75, -6.8, mat.darkWood);
+createBox(0.2, 1.1, 9.3, 2.3, 5.75, -6.8, mat.darkWood);
+createBox(4.8, 1.1, 0.2, 0, 5.75, -2.2, mat.darkWood);
+// Second Floor Walls:
+// Left Wing (X: -16 to -4.5): Master Bedroom (Door at Z = 3)
+buildDoorWallZ(-4.5, 5.2, H2 - 0.2, -12, 12, 3, 2.6, 3.0, mat.interiorWall);
+// Right Wing (X: 4.5 to 16): Bathroom (Z: -12 to 0) & Guest Bedroom (Z: 0 to 12)
+buildDoorWallZ(4.5, 5.2, H2 - 0.2, -12, 0, -5, 2.4, 3.0, mat.interiorWall); // Bathroom door
+buildDoorWallZ(4.5, 5.2, H2 - 0.2, 0, 12, 5, 2.4, 3.0, mat.interiorWall);   // Guest bedroom door
+createBox(11.5, H2 - 0.2, 0.5, 10.25, 5.2 + (H2 - 0.2) / 2, 0, mat.interiorWall); // Divider
+// Bathroom Tile Floor Overlay
+createBox(11.2, 0.06, 11.5, 10.2, 5.22, -6, mat.tileFloor, { solid: false });
+// --- 9. ROOF ---
+createBox(W + 1.5, 0.6, D + 1.5, 0, 10.3, 0, mat.roof);
+createBox(W - 4, 1.4, D - 4, 0, 11.2, 0, mat.roof);
+// --- 10. FURNITURE ---
+// LIVING ROOM (Left Ground Floor: X = -10.5)
+createBox(5.5, 0.06, 7, -10.5, 0.42, 0, mat.carpet, { solid: false });
+createBox(1.8, 0.7, 5.2, -13.5, 0.75, 0, mat.sofaFabric);
+createBox(0.45, 1.4, 5.2, -14.2, 1.1, 0, mat.sofaFabric);
+createBox(1.6, 0.55, 3.2, -10.8, 0.68, 0, mat.darkWood);
+createBox(1.0, 2.4, 3.4, -5.7, 1.6, -3, mat.stonePath);
+createBox(0.2, 1.5, 2.8, -5.4, 3.5, -3, mat.trim);
+// DINING ROOM (Front Right Ground Floor: X = 10.5, Z = 6)
+createBox(4.8, 0.15, 2.6, 10.5, 1.25, 6, mat.darkWood);
+createBox(0.4, 0.85, 0.4, 8.6, 0.82, 5.0, mat.darkWood);
+createBox(0.4, 0.85, 0.4, 12.4, 0.82, 5.0, mat.darkWood);
+createBox(0.4, 0.85, 0.4, 8.6, 0.82, 7.0, mat.darkWood);
+createBox(0.4, 0.85, 0.4, 12.4, 0.82, 7.0, mat.darkWood);
+for (const cx of [9.3, 11.7]) {
+createBox(0.8, 0.6, 0.8, cx, 0.7, 4.1, mat.sofaFabric);
+createBox(0.8, 0.6, 0.8, cx, 0.7, 7.9, mat.sofaFabric);
+}
+// KITCHEN (Back Right Ground Floor: X = 10.5, Z = -6)
+createBox(9.5, 1.1, 1.3, 10.5, 0.95, -11.0, mat.porcelain);
+createBox(1.3, 1.1, 8.5, 15.0, 0.95, -6.5, mat.porcelain);
+createBox(4.2, 1.1, 1.8, 10.2, 0.95, -6.0, mat.darkWood);
+createBox(1.5, 2.8, 1.4, 6.2, 1.8, -10.9, mat.stonePath);
+// MASTER BEDROOM (Left Second Floor: X = -10.5)
+createBox(4.2, 0.65, 3.6, -13.2, 5.52, -2, mat.darkWood);
+createBox(3.9, 0.45, 3.3, -13.2, 6.05, -2, mat.bedSheet);
+createBox(2.8, 0.48, 3.35, -12.6, 6.07, -2, mat.bedBlanket);
+createBox(0.8, 0.25, 1.2, -14.5, 6.38, -2.8, mat.porcelain);
+createBox(0.8, 0.25, 1.2, -14.5, 6.38, -1.2, mat.porcelain);
+createBox(0.3, 2.2, 3.8, -15.4, 6.3, -2, mat.darkWood);
+createBox(0.9, 0.8, 0.9, -14.8, 5.6, -4.6, mat.darkWood);
+createBox(0.9, 0.8, 0.9, -14.8, 5.6, 0.6, mat.darkWood);
+createBox(1.1, 1.3, 3.4, -5.4, 5.85, -3, mat.darkWood);
+// BATHROOM (Back Right Second Floor: X = 10.5, Z = -6)
+createBox(3.2, 0.85, 1.6, 13.8, 5.62, -10.6, mat.porcelain);
+createBox(2.8, 0.1, 1.2, 13.8, 6.02, -10.6, mat.water, { solid: false });
+createBox(1.2, 1.05, 3.2, 15.0, 5.72, -5.5, mat.porcelain);
+createBox(0.1, 1.4, 2.8, 15.6, 7.2, -5.5, mat.glass, { solid: false });
+createBox(0.8, 0.65, 1.0, 14.8, 5.52, -1.5, mat.porcelain);
+createBox(0.4, 1.1, 0.9, 15.3, 5.85, -1.5, mat.porcelain);
+// GUEST BEDROOM (Front Right Second Floor: X = 10.5, Z = 6)
+createBox(3.6, 0.65, 2.6, 13.5, 5.52, 6, mat.darkWood);
+createBox(3.3, 0.45, 2.4, 13.5, 6.05, 6, mat.bedSheet);
+createBox(2.4, 0.48, 2.45, 13.0, 6.07, 6, mat.carpet);
+createBox(0.7, 0.25, 1.0, 14.6, 6.38, 6, mat.porcelain);
+// Interior Ceiling Lights
+addInteriorLight(0, 4.6, 2);      // Foyer
+addInteriorLight(-10.5, 4.6, 0);  // Living Room
+addInteriorLight(10.5, 4.6, 6);   // Dining Room
+addInteriorLight(10.5, 4.6, -6);  // Kitchen
+addInteriorLight(0, 9.6, 3);      // Upstairs Hallway
+addInteriorLight(-10.5, 9.6, -2); // Master Bedroom
+addInteriorLight(10.5, 9.6, -6);  // Bathroom
+addInteriorLight(10.5, 9.6, 6);   // Guest Bedroom
+// --- 11. PLAYER CONTROLLER & ROOM TRACKER ---
+const controls = new PointerLockControls(camera, document.body);
+const overlay = document.getElementById('overlay');
+const hud = document.getElementById('hud');
+const roomLabel = document.getElementById('room-name');
+const crosshair = document.getElementById('crosshair');
+overlay.addEventListener('click', () => controls.lock());
+controls.addEventListener('lock', () => {
+overlay.style.display = 'none';
+hud.style.display = 'block';
+crosshair.style.display = 'block';
+});
+controls.addEventListener('unlock', () => {
+overlay.style.display = 'flex';
+hud.style.display = 'none';
+crosshair.style.display = 'none';
+});
+const player = {
+pos: new THREE.Vector3(0, 0, 22),
+velY: 0,
+radius: 0.45,
+eyeHeight: 1.75,
+onGround: true
+};
+camera.position.set(player.pos.x, player.pos.y + player.eyeHeight, player.pos.z);
+const keys = {};
+window.addEventListener('keydown', (e) => {
+keys[e.code] = true;
+if (e.code === 'Space' && player.onGround && controls.isLocked) {
+player.velY = 7.5;
+player.onGround = false;
+}
+});
+window.addEventListener('keyup', (e) => (keys[e.code] = false));
+window.addEventListener('resize', () => {
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
+});
+// Resolve horizontal circle vs AABB wall collisions
+function resolveCollisions() {
+const feetY = player.pos.y + 0.35;
+const headY = player.pos.y + player.eyeHeight + 0.1;
+for (const box of wallColliders) {
+if (headY <= box.minY || feetY >= box.maxY) continue;
+const closestX = Math.max(box.minX, Math.min(player.pos.x, box.maxX));
+const closestZ = Math.max(box.minZ, Math.min(player.pos.z, box.maxZ));
+const dx = player.pos.x - closestX;
+const dz = player.pos.z - closestZ;
+const distSq = dx * dx + dz * dz;
+if (distSq < player.radius * player.radius) {
+const dist = Math.sqrt(distSq);
+if (dist > 0.0001) {
+const overlap = player.radius - dist;
+player.pos.x += (dx / dist) * overlap;
+player.pos.z += (dz / dist) * overlap;
+}
+}
+}
+}
+// Find highest floor directly under player
+function getFloorHeight() {
+let maxFloor = 0;
+for (const f of floorSurfaces) {
+if (
+player.pos.x >= f.minX - 0.2 &&
+player.pos.x <= f.maxX + 0.2 &&
+player.pos.z >= f.minZ - 0.2 &&
+player.pos.z <= f.maxZ + 0.2
+) {
+if (f.topY <= player.pos.y + 0.65 && f.topY > maxFloor) {
+maxFloor = f.topY;
+}
+}
+}
+return maxFloor;
+}
+function updateRoomHUD() {
+const { x, y, z } = player.pos;
+if (z > 12 || z < -12 || x < -16 || x > 16) {
+roomLabel.textContent = 'Front Courtyard';
+} else if (y < 4.5) {
+if (x < -5) roomLabel.textContent = '1F — Grand Living Room';
+else if (x > 5 && z < 0) roomLabel.textContent = '1F — Chef Kitchen';
+else if (x > 5 && z >= 0) roomLabel.textContent = '1F — Dining Room';
+else roomLabel.textContent = '1F — Grand Foyer & Staircase';
+} else {
+if (x < -4.5) roomLabel.textContent = '2F — Master Bedroom';
+else if (x > 4.5 && z < 0) roomLabel.textContent = '2F — Luxury Bathroom';
+else if (x > 4.5 && z >= 0) roomLabel.textContent = '2F — Guest Bedroom';
+else roomLabel.textContent = '2F — Upper Landing';
+}
+}
+// --- 12. ANIMATION LOOP ---
+const clock = new THREE.Clock();
+const forward = new THREE.Vector3();
+const right = new THREE.Vector3();
+function animate() {
+requestAnimationFrame(animate);
+const dt = Math.min(clock.getDelta(), 0.05);
+if (controls.isLocked) {
+camera.getWorldDirection(forward);
+forward.y = 0;
+forward.normalize();
+right.crossVectors(forward, camera.up).normalize();
+const speed = keys['ShiftLeft'] ? 10.5 : 6.0;
+let moveX = 0, moveZ = 0;
+if (keys['KeyW']) { moveX += forward.x; moveZ += forward.z; }
+if (keys['KeyS']) { moveX -= forward.x; moveZ -= forward.z; }
+if (keys['KeyD']) { moveX += right.x;   moveZ += right.z; }
+if (keys['KeyA']) { moveX -= right.x;   moveZ -= right.z; }
+const len = Math.hypot(moveX, moveZ);
+if (len > 0) {
+player.pos.x += (moveX / len) * speed * dt;
+player.pos.z += (moveZ / len) * speed * dt;
+}
+resolveCollisions();
+// Simple vertical gravity & stair stepping
+player.velY -= 20 * dt;
+player.pos.y += player.velY * dt;
+const floorY = getFloorHeight();
+if (player.pos.y <= floorY) {
+player.pos.y = floorY;
+player.velY = 0;
+player.onGround = true;
+}
+camera.position.set(player.pos.x, player.pos.y + player.eyeHeight, player.pos.z);
+updateRoomHUD();
+}
+renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>

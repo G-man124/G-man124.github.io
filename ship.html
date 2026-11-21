@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voxel Space Flight - Three.js (Fixed)</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #020208;
+      font-family: 'Courier New', Courier, monospace;
+      user-select: none;
+    }
+    #ui {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.75);
+      color: white;
+      z-index: 10;
+      cursor: pointer;
+    }
+    #ui h1 {
+      font-size: 3rem;
+      margin-bottom: 10px;
+      text-shadow: 3px 3px 0px #333;
+      letter-spacing: 2px;
+    }
+    #ui p {
+      font-size: 1.2rem;
+      background: #222;
+      padding: 10px 20px;
+      border: 2px solid #555;
+    }
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255, 255, 255, 0.85);
+    }
+    #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
+    #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+    #hud {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      color: #0f0;
+      font-size: 14px;
+      pointer-events: none;
+      display: none;
+      text-shadow: 1px 1px 0 #000;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="ui">
+    <h1>SPACESHIP</h1>
+    <p>CLICK TO LAUNCH</p>
+    <div style="margin-top: 20px; text-align: center; color: #aaa; font-size: 0.9rem;">
+      <b>MOUSE:</b> Look Around (Minecraft Style) &nbsp;|&nbsp;
+      <b>ARROWS / WASD:</b> Fly & Strafe &nbsp;|&nbsp;
+      <b>SPACE:</b> Hyper Speed
+    </div>
+  </div>
+
+  <div id="crosshair"></div>
+  <div id="hud">SPEED: <span id="speed-val">1x</span> | HYPERDRIVE: <span id="hyper-status">READY</span></div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.155.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    // --- 1. SCENE & RENDERER SETUP ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020208);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    // --- 2. LIGHTING ---
+    const ambientLight = new THREE.AmbientLight(0x505065, 1.8);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    dirLight.position.set(50, 100, 50);
+    scene.add(dirLight);
+
+    // --- 3. BUILD MINECRAFT-STYLE VOXEL SHIP ---
+    const ship = new THREE.Group();
+    scene.add(ship);
+
+    // Inner mesh group so banking doesn't skew forward movement vectors
+    const shipBody = new THREE.Group();
+    ship.add(shipBody);
+
+    function addBlock(w, h, d, color, x, y, z, emissive = 0x000000) {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mat = new THREE.MeshStandardMaterial({ 
+        color: color, 
+        roughness: 0.6,
+        emissive: emissive,
+        emissiveIntensity: emissive ? 2 : 0
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, y, z);
+      shipBody.add(mesh);
+      return mesh;
+    }
+
+    // Fuselage, Nose, Cockpit, Wings, Tail
+    addBlock(1.4, 1.0, 4.0, 0xdddddd, 0, 0, 0);
+    addBlock(0.8, 0.6, 1.5, 0xcc3333, 0, -0.1, -2.5);
+    addBlock(1.0, 0.6, 1.4, 0x22aaff, 0, 0.6, -0.4);
+    addBlock(5.0, 0.2, 1.6, 0xbbbbbb, 0, -0.1, 0.5);
+    addBlock(0.4, 0.8, 1.8, 0xcc3333, -2.5, 0.2, 0.5);
+    addBlock(0.4, 0.8, 1.8, 0xcc3333, 2.5, 0.2, 0.5);
+    addBlock(0.2, 1.2, 1.2, 0xcc3333, 0, 0.8, 1.4);
+
+    // Glowing Thrusters
+    const leftThruster = addBlock(0.4, 0.4, 0.4, 0x00ffff, -0.4, 0, 2.1, 0x00ffff);
+    const rightThruster = addBlock(0.4, 0.4, 0.4, 0x00ffff, 0.4, 0, 2.1, 0x00ffff);
+
+    // --- 4. INFINITE STARFIELD (FIXED CULLING & WRAPPING) ---
+    const starCount = 3500;
+    const starRange = 800;
+    const starHalf = starRange / 2;
+
+    const starGeo = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(starCount * 3);
+    
+    for (let i = 0; i < starCount * 3; i += 3) {
+      starPositions[i] = (Math.random() - 0.5) * starRange;
+      starPositions[i + 1] = (Math.random() - 0.5) * starRange;
+      starPositions[i + 2] = (Math.random() - 0.5) * starRange;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    
+    const starMat = new THREE.PointsMaterial({ 
+      color: 0xffffff, 
+      size: 1.8,
+      fog: false // Prevents stars from fading to pitch black
+    });
+    const starField = new THREE.Points(starGeo, starMat);
+    starField.frustumCulled = false; // FIX: Prevents stars from disappearing far from origin
+    scene.add(starField);
+
+    // --- 5. POINTER LOCK & CONTROLS ---
+    const ui = document.getElementById('ui');
+    const crosshair = document.getElementById('crosshair');
+    const hud = document.getElementById('hud');
+    const speedVal = document.getElementById('speed-val');
+    const hyperStatus = document.getElementById('hyper-status');
+
+    let isLocked = false;
+    let yaw = 0;
+    let pitch = 0;
+
+    ui.addEventListener('click', () => {
+      document.body.requestPointerLock();
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+      isLocked = document.pointerLockElement === document.body;
+      ui.style.display = isLocked ? 'none' : 'flex';
+      crosshair.style.display = isLocked ? 'block' : 'none';
+      hud.style.display = isLocked ? 'block' : 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isLocked) return;
+      const sensitivity = 0.0022;
+      yaw -= e.movementX * sensitivity;
+      pitch -= e.movementY * sensitivity;
+      pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+    });
+
+    const keys = {
+      ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
+      KeyW: false, KeyS: false, KeyA: false, KeyD: false,
+      Space: false
+    };
+
+    window.addEventListener('keydown', (e) => {
+      if (keys.hasOwnProperty(e.code)) {
+        e.preventDefault();
+        keys[e.code] = true;
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
+    });
+
+    // --- 6. SMOOTH ANIMATION LOOP ---
+    const clock = new THREE.Clock();
+    let currentSpeed = 20;
+    let bankAngle = 0;
+
+    // Reusable vectors to avoid garbage collection stutter
+    const forward = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const cameraOffset = new THREE.Vector3();
+    const lookTarget = new THREE.Vector3();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // Clamp delta to max 0.05s to prevent lag spikes from teleporting the ship
+      const delta = Math.min(clock.getDelta(), 0.05);
+
+      // 1. Hyper Speed (Spacebar)
+      const isHyper = keys.Space && isLocked;
+      const targetSpeed = isHyper ? 240 : (keys.ArrowUp || keys.KeyW ? 55 : 20);
+      currentSpeed = THREE.MathUtils.lerp(currentSpeed, targetSpeed, delta * 5);
+
+      speedVal.textContent = Math.round(currentSpeed / 20) + 'x';
+      hyperStatus.textContent = isHyper ? 'ENGAGED' : 'READY';
+      hyperStatus.style.color = isHyper ? '#00ffff' : '#0f0';
+      
+      const thrusterScale = isHyper ? 2.8 + Math.random() * 0.8 : 1.0;
+      leftThruster.scale.z = thrusterScale;
+      rightThruster.scale.z = thrusterScale;
+
+      // 2. Dynamic FOV (Minecraft Sprint Effect)
+      const targetFov = isHyper ? 112 : 75;
+      if (Math.abs(camera.fov - targetFov) > 0.05) {
+        camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, delta * 6);
+        camera.updateProjectionMatrix();
+      }
+
+      // 3. Ship Orientation & Visual Banking
+      const euler = new THREE.Euler(pitch, yaw, 0, 'YXZ');
+      ship.quaternion.setFromEuler(euler);
+
+      let strafe = 0;
+      if (keys.ArrowLeft || keys.KeyA) strafe -= 1;
+      if (keys.ArrowRight || keys.KeyD) strafe += 1;
+
+      bankAngle = THREE.MathUtils.lerp(bankAngle, -strafe * 0.45, delta * 8);
+      shipBody.rotation.z = bankAngle; // Bank only the inner body, keeping flight vectors stable
+
+      // 4. Move Ship
+      forward.set(0, 0, -1).applyQuaternion(ship.quaternion);
+      right.set(1, 0, 0).applyQuaternion(ship.quaternion);
+
+      let moveSpeed = currentSpeed;
+      if (keys.ArrowDown || keys.KeyS) moveSpeed = -18;
+
+      ship.position.addScaledVector(forward, moveSpeed * delta);
+      ship.position.addScaledVector(right, strafe * 32 * delta);
+
+      // 5. Smooth Chase Camera
+      cameraOffset.set(0, 2.2, 7.5);
+      if (isHyper) {
+        cameraOffset.x += (Math.random() - 0.5) * 0.12;
+        cameraOffset.y += (Math.random() - 0.5) * 0.12;
+      }
+      cameraOffset.applyQuaternion(ship.quaternion);
+      camera.position.copy(ship.position).add(cameraOffset);
+
+      lookTarget.copy(ship.position).addScaledVector(forward, 15);
+      camera.lookAt(lookTarget);
+
+      // 6. Modulo Star Wrapping (Never loses stars regardless of speed or distance)
+      const positions = starField.geometry.attributes.position.array;
+      const sx = ship.position.x;
+      const sy = ship.position.y;
+      const sz = ship.position.z;
+
+      for (let i = 0; i < starCount * 3; i += 3) {
+        positions[i] = sx + ((((positions[i] - sx + starHalf) % starRange) + starRange) % starRange) - starHalf;
+        positions[i + 1] = sy + ((((positions[i + 1] - sy + starHalf) % starRange) + starRange) % starRange) - starHalf;
+positions[i + 2] = sz + ((((positions[i + 2] - sz + starHalf) % starRange) + starRange) % starRange) - starHalf;
+}
+starField.geometry.attributes.position.needsUpdate = true;
+renderer.render(scene, camera);
+}
+window.addEventListener('resize', () => {
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
+});
+animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js + Cannon-es Pointer Lock Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      user-select: none;
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      z-index: 10;
+    }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+    }
+  </style>
+<script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.155.0/examples/jsm/",
+        "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="overlay">
+    <h1>Click to Play</h1>
+    <p>WASD = Move | SPACE = Jump | LEFT CLICK = Shoot Physics Ball | ESC = Pause</p>
+  </div>
+  <div id="crosshair"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    import * as CANNON from 'cannon-es';
+
+    // --- 1. SCENE & RENDERER SETUP ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.fog = new THREE.Fog(0x87ceeb, 15, 100);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(20, 40, 25);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(2048, 2048);
+    scene.add(dirLight);
+
+    // --- 2. PHYSICS WORLD SETUP ---
+    const world = new CANNON.World({
+      gravity: new CANNON.Vec3(0, -20, 0),
+      allowSleep: true // Allows floating/stacked blocks to stay frozen until hit
+    });
+
+    const defaultMaterial = new CANNON.Material('default');
+    const defaultContact = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
+      friction: 0.4,
+      restitution: 0.15
+    });
+    world.addContactMaterial(defaultContact);
+
+    const objectsToUpdate = [];
+
+    // Ground
+    const groundGeo = new THREE.PlaneGeometry(140, 140);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x3b7a57 });
+    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+    groundMesh.rotation.x = -Math.PI / 2;
+    groundMesh.receiveShadow = true;
+    scene.add(groundMesh);
+
+    const groundBody = new CANNON.Body({
+      type: CANNON.Body.STATIC,
+      shape: new CANNON.Plane(),
+      material: defaultMaterial
+    });
+    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    world.addBody(groundBody);
+
+    // Helper to create sleeping physics boxes
+    function createBox(w, h, d, position, color = 0xd97706, mass = 1.2) {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, d),
+        new THREE.MeshStandardMaterial({ color })
+      );
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.copy(position);
+      scene.add(mesh);
+
+      const body = new CANNON.Body({
+        mass,
+        shape: new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)),
+        position: new CANNON.Vec3(position.x, position.y, position.z),
+        material: defaultMaterial,
+        allowSleep: true,
+        sleepSpeedLimit: 0.2,
+        sleepTimeLimit: 0.5
+      });
+
+      // Start frozen in place until impacted by a ball or the player
+      body.sleep();
+
+      world.addBody(body);
+      objectsToUpdate.push({ mesh, body });
+    }
+
+    // --- BUILD "G-MAN124" OUT OF PHYSICS BLOCKS ---
+    const bannerRows = [
+      "####       #   #   ###   #   #   ##    ###   #   #",
+      "#          ## ##  #   #  ##  #    #       #  #   #",
+      "#  ##  ### # # #  #####  # # #    #    ###   #####",
+      "#   #      #   #  #   #  #  ##    #   #          #",
+      " ###       #   #  #   #  #   #   ###  #####      #"
+    ];
+
+    const boxSize = 0.85;
+    const spacing = 0.86;
+    const totalCols = bannerRows[0].length;
+    const totalRows = bannerRows.length;
+    const startX = -((totalCols - 1) * spacing) / 2;
+    const bannerZ = -18;
+
+    const palette = [0xf59e0b, 0xef4444, 0x3b82f6, 0x10b981, 0x8b5cf6, 0xec4899, 0x06b6d4, 0xf97316];
+
+    for (let r = 0; r < totalRows; r++) {
+      const yIndex = totalRows - 1 - r;
+      const yPos = boxSize / 2 + yIndex * spacing;
+
+      for (let c = 0; c < totalCols; c++) {
+        if (bannerRows[r][c] === '#') {
+          const xPos = startX + c * spacing;
+          const color = palette[Math.floor(c / 6.5) % palette.length];
+          createBox(boxSize, boxSize, boxSize, new THREE.Vector3(xPos, yPos, bannerZ), color, 1.2);
+        }
+      }
+    }
+
+    // --- 3. PLAYER PHYSICS & POINTER LOCK ---
+    const playerRadius = 0.8;
+    const playerBody = new CANNON.Body({
+      mass: 5,
+      shape: new CANNON.Sphere(playerRadius),
+      position: new CANNON.Vec3(0, 3, 12),
+      fixedRotation: true,
+      linearDamping: 0.9,
+      allowSleep: false, // Keep player always awake
+      material: defaultMaterial
+    });
+    world.addBody(playerBody);
+
+    let canJump = false;
+    playerBody.addEventListener('collide', (e) => {
+      const contactNormal = new CANNON.Vec3();
+      if (e.contact.bi.id === playerBody.id) {
+        e.contact.ni.negate(contactNormal);
+      } else {
+        contactNormal.copy(e.contact.ni);
+      }
+      if (contactNormal.y > 0.5) canJump = true;
+    });
+
+    const controls = new PointerLockControls(camera, document.body);
+    const overlay = document.getElementById('overlay');
+    const crosshair = document.getElementById('crosshair');
+
+    overlay.addEventListener('click', () => controls.lock());
+    controls.addEventListener('lock', () => {
+      overlay.style.display = 'none';
+      crosshair.style.display = 'block';
+    });
+    controls.addEventListener('unlock', () => {
+      overlay.style.display = 'flex';
+      crosshair.style.display = 'none';
+    });
+
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (e.code === 'Space' && canJump && controls.isLocked) {
+        playerBody.velocity.y = 10;
+        canJump = false;
+      }
+    });
+    window.addEventListener('keyup', (e) => (keys[e.code] = false));
+
+    // Shoot physics spheres on click
+    window.addEventListener('mousedown', () => {
+      if (!controls.isLocked) return;
+
+      const radius = 0.45;
+      const ballMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 16, 16),
+        new THREE.MeshStandardMaterial({ color: 0x111827 })
+      );
+      ballMesh.castShadow = true;
+      scene.add(ballMesh);
+
+      const shootDir = new THREE.Vector3();
+      camera.getWorldDirection(shootDir);
+
+      const spawnPos = new CANNON.Vec3(
+        playerBody.position.x + shootDir.x * 1.5,
+        playerBody.position.y + 0.6 + shootDir.y * 1.5,
+        playerBody.position.z + shootDir.z * 1.5
+      );
+
+      const ballBody = new CANNON.Body({
+        mass: 4,
+        shape: new CANNON.Sphere(radius),
+        position: spawnPos,
+        allowSleep: false,
+        material: defaultMaterial
+      });
+      ballBody.velocity.set(shootDir.x * 40, shootDir.y * 40, shootDir.z * 40);
+      world.addBody(ballBody);
+      objectsToUpdate.push({ mesh: ballMesh, body: ballBody });
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- 4. MAIN GAME LOOP ---
+    const clock = new THREE.Clock();
+    const forwardVec = new THREE.Vector3();
+    const rightVec = new THREE.Vector3();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.1);
+
+      if (controls.isLocked) {
+        camera.getWorldDirection(forwardVec);
+        forwardVec.y = 0;
+        forwardVec.normalize();
+        rightVec.crossVectors(forwardVec, camera.up).normalize();
+
+        const moveSpeed = 12;
+        let moveX = 0;
+        let moveZ = 0;
+
+        if (keys['KeyW']) { moveX += forwardVec.x; moveZ += forwardVec.z; }
+        if (keys['KeyS']) { moveX -= forwardVec.x; moveZ -= forwardVec.z; }
+        if (keys['KeyD']) { moveX += rightVec.x;   moveZ += rightVec.z; }
+        if (keys['KeyA']) { moveX -= rightVec.x;   moveZ -= rightVec.z; }
+
+        const len = Math.hypot(moveX, moveZ);
+        if (len > 0) {
+          playerBody.velocity.x = (moveX / len) * moveSpeed;
+          playerBody.velocity.z = (moveZ / len) * moveSpeed;
+        }
+      }
+
+      world.step(1 / 60, dt, 3);
+
+      camera.position.set(
+        playerBody.position.x,
+        playerBody.position.y + 0.8,
+        playerBody.position.z
+      );
+
+      for (const obj of objectsToUpdate) {
+        obj.mesh.position.copy(obj.body.position);
+        obj.mesh.quaternion.copy(obj.body.quaternion);
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>

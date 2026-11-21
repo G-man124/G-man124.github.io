@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js 3D White House Explorer</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      user-select: none;
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      z-index: 10;
+    }
+    #overlay h1 {
+      margin-bottom: 6px;
+      letter-spacing: 3px;
+      font-size: 2.3rem;
+      text-transform: uppercase;
+    }
+    #overlay .subtitle {
+      color: #93c5fd;
+      font-style: italic;
+      margin-bottom: 18px;
+      font-size: 1.05rem;
+    }
+    #overlay p {
+      color: #cbd5e1;
+      max-width: 540px;
+      line-height: 1.6;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.72);
+      color: #f8fafc;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: none;
+      border-left: 4px solid #dc2626;
+    }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.75);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.155.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="overlay">
+    <h1>The White House</h1>
+    <div class="subtitle">1600 Pennsylvania Avenue NW — 3D Walkthrough</div>
+    <p>Click anywhere to enter the grounds</p>
+    <p><strong>WASD</strong> = Walk &nbsp;|&nbsp; <strong>SHIFT</strong> = Sprint &nbsp;|&nbsp; <strong>SPACE</strong> = Jump &nbsp;|&nbsp; <strong>ESC</strong> = Pause</p>
+  </div>
+  <div id="hud">Location: <span id="room-name">North Lawn</span></div>
+  <div id="crosshair"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    // --- 1. SCENE, CAMERA & RENDERER ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x93c5fd);
+    scene.fog = new THREE.Fog(0x93c5fd, 45, 180);
+
+    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 400);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // --- 2. LIGHTING ---
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x3f6212, 0.75);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.15);
+    sunLight.position.set(45, 70, 50);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.left = -65;
+    sunLight.shadow.camera.right = 65;
+    sunLight.shadow.camera.top = 65;
+    sunLight.shadow.camera.bottom = -65;
+    scene.add(sunLight);
+
+    function addChandelier(x, y, z, color = 0xfef3c7, intensity = 1.4, distance = 26) {
+      const light = new THREE.PointLight(color, intensity, distance);
+      light.position.set(x, y, z);
+      scene.add(light);
+
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.65, 0.08, 8, 20),
+        new THREE.MeshBasicMaterial({ color: 0xfde68a })
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(x, y + 0.4, z);
+      scene.add(ring);
+    }
+
+    // --- 3. MATERIALS ---
+    const mat = {
+      lawn: new THREE.MeshStandardMaterial({ color: 0x365314, roughness: 0.9 }),
+      driveway: new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.85 }),
+      aquiaWhite: new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.55 }),
+      creamWall: new THREE.MeshStandardMaterial({ color: 0xfefce8, roughness: 0.65 }),
+      eastRoomGold: new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.6 }),
+      greenRoom: new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.75 }),
+      blueRoom: new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.75 }),
+      redRoom: new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.75 }),
+      marbleFloor: new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.25 }),
+      parquetFloor: new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 }),
+      redCarpet: new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.88 }),
+      ovalRug: new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.85 }),
+      mahogany: new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.45 }),
+      goldTrim: new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.65, roughness: 0.25 }),
+      roofSlate: new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.75 }),
+      glass: new THREE.MeshStandardMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.35, roughness: 0.1 }),
+      water: new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.1, transparent: true, opacity: 0.8 }),
+      flagBlue: new THREE.MeshStandardMaterial({ color: 0x1e3a8a }),
+      flagRed: new THREE.MeshStandardMaterial({ color: 0xdc2626 }),
+      ironFence: new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.7, roughness: 0.3 })
+    };
+
+    // --- 4. COLLISION SYSTEM (NO PHYSICS ENGINE) ---
+    const wallColliders = [];
+    const floorSurfaces = [];
+
+    function createBox(w, h, d, x, y, z, material, { solid = true, walkable = false, castShadow = true } = {}) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      const minX = x - w / 2, maxX = x + w / 2;
+      const minY = y - h / 2, maxY = y + h / 2;
+      const minZ = z - d / 2, maxZ = z + d / 2;
+
+      if (solid) wallColliders.push({ minX, maxX, minY, maxY, minZ, maxZ });
+      if (walkable) floorSurfaces.push({ minX, maxX, topY: maxY, minZ, maxZ });
+      return mesh;
+    }
+
+    function createColumn(radius, height, x, yBase, z, material = mat.aquiaWhite) {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.9, radius, height, 18), material);
+      mesh.position.set(x, yBase + height / 2, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      wallColliders.push({
+        minX: x - radius, maxX: x + radius,
+        minY: yBase, maxY: yBase + height,
+        minZ: z - radius, maxZ: z + radius
+      });
+    }
+
+    function buildDoorWallZ(x, yBase, height, zStart, zEnd, doorZCenter, doorWidth, doorHeight, material) {
+      const thickness = 0.5;
+      const z1End = doorZCenter - doorWidth / 2;
+      const z2Start = doorZCenter + doorWidth / 2;
+
+      if (z1End > zStart) {
+        const len = z1End - zStart;
+        createBox(thickness, height, len, x, yBase + height / 2, zStart + len / 2, material);
+      }
+      if (zEnd > z2Start) {
+        const len = zEnd - z2Start;
+        createBox(thickness, height, len, x, yBase + height / 2, z2Start + len / 2, material);
+      }
+      const headerH = height - doorHeight;
+      if (headerH > 0) {
+        createBox(thickness, headerH, doorWidth, x, yBase + doorHeight + headerH / 2, doorZCenter, material);
+      }
+    }
+
+    function buildDoorWallX(z, yBase, height, xStart, xEnd, doorXCenter, doorWidth, doorHeight, material) {
+      const thickness = 0.5;
+      const x1End = doorXCenter - doorWidth / 2;
+      const x2Start = doorXCenter + doorWidth / 2;
+
+      if (x1End > xStart) {
+        const len = x1End - xStart;
+        createBox(len, height, thickness, xStart + len / 2, yBase + height / 2, z, material);
+      }
+      if (xEnd > x2Start) {
+        const len = xEnd - xStart;
+        createBox(len, height, thickness, x2Start + len / 2, yBase + height / 2, z, material);
+      }
+      const headerH = height - doorHeight;
+      if (headerH > 0) {
+        createBox(doorWidth, headerH, thickness, doorXCenter, yBase + doorHeight + headerH / 2, z, material);
+      }
+    }
+
+    // --- 5. GROUNDS, FOUNTAIN & PERIMETER ---
+    // North & South Lawns
+    createBox(240, 0.5, 240, 0, -0.25, 0, mat.lawn, { solid: false, walkable: true, castShadow: false });
+    // North Carriage Driveway & Plaza
+    createBox(16, 0.08, 36, 0, 0.04, 30, mat.driveway, { solid: false, walkable: true, castShadow: false });
+
+    // North Lawn Fountain
+    const fountainRim = new THREE.Mesh(new THREE.TorusGeometry(4.2, 0.4, 12, 32), mat.aquiaWhite);
+    fountainRim.rotation.x = Math.PI / 2;
+    fountainRim.position.set(0, 0.35, 27);
+    scene.add(fountainRim);
+    const fountainWater = new THREE.Mesh(new THREE.CylinderGeometry(4.0, 4.0, 0.45, 32), mat.water);
+    fountainWater.position.set(0, 0.25, 27);
+    scene.add(fountainWater);
+    wallColliders.push({ minX: -4.4, maxX: 4.4, minY: 0, maxY: 1, minZ: 22.6, maxZ: 31.4 });
+
+    // --- 6. EXECUTIVE RESIDENCE STRUCTURE ---
+    // Executive Residence: X = -20 to 20 (Width 40), Z = -12 to 12 (Depth 24)
+    // State Floor (1F): Y = 0.4 to 5.6 | Residence Floor (2F): Y = 6.0 to 11.0
+    const W = 40, D = 24, H1 = 5.6, H2 = 5.0;
+
+    // Ground Slab & Porch Steps
+    createBox(W, 0.4, D, 0, 0.2, 0, mat.marbleFloor, { solid: false, walkable: true });
+    createBox(11, 0.2, 7.5, 0, 0.1, 15.5, mat.marbleFloor, { solid: false, walkable: true });
+createBox(10.5, 0.35, 6.5, 0, 0.175, 15.0, mat.marbleFloor, { solid: false, walkable: true });
+// NORTH PORTICO (Iconic Front Entrance at Z = +12 to +18.5)
+for (const cx of [-4.5, -1.5, 1.5, 4.5]) {
+createColumn(0.45, 10.4, cx, 0.4, 18.2);
+}
+for (const cx of [-4.5, 4.5]) {
+createColumn(0.45, 10.4, cx, 0.4, 15.0);
+}
+// North Portico Roof & Triangular Pediment
+createBox(11.4, 0.8, 7.2, 0, 11.1, 15.4, mat.aquiaWhite);
+const pedimentGeo = new THREE.ConeGeometry(6.6, 2.2, 4);
+pedimentGeo.rotateY(Math.PI / 4);
+const pediment = new THREE.Mesh(pedimentGeo, mat.aquiaWhite);
+pediment.scale.set(1.2, 1, 0.7);
+pediment.position.set(0, 12.5, 15.4);
+scene.add(pediment);
+// SOUTH PORTICO (Semicircular Balcony at Z = -12 to -17.5)
+const southFloor = new THREE.Mesh(new THREE.CylinderGeometry(6.2, 6.2, 0.4, 24, 1, false, Math.PI * 0.5, Math.PI), mat.marbleFloor);
+southFloor.position.set(0, 0.2, -12);
+scene.add(southFloor);
+floorSurfaces.push({ minX: -6, maxX: 6, topY: 0.4, minZ: -18, maxZ: -12 });
+const southBalcony = new THREE.Mesh(new THREE.CylinderGeometry(6.2, 6.2, 0.5, 24, 1, false, Math.PI * 0.5, Math.PI), mat.aquiaWhite);
+southBalcony.position.set(0, 5.8, -12);
+scene.add(southBalcony);
+for (let i = 0; i <= 5; i++) {
+const angle = Math.PI + (i / 5) * Math.PI;
+const sx = Math.cos(angle) * 5.6;
+const sz = -12 + Math.sin(angle) * 5.6;
+createColumn(0.38, 10.4, sx, 0.4, sz);
+}
+// --- 7. EXTERIOR WALLS & WINDOWS ---
+// North Wall (Z = 12): Grand Entrance at X = 0 (width 4.4, height 3.8)
+buildDoorWallX(12, 0, H1, -20, 20, 0, 4.4, 3.8, mat.aquiaWhite);
+createBox(W, H2, 0.6, 0, H1 + H2 / 2, 12, mat.aquiaWhite);
+// South Wall (Z = -12): South Portico Doorway at X = 0 (width 3.6, height 3.6)
+buildDoorWallX(-12, 0, H1, -20, 20, 0, 3.6, 3.6, mat.aquiaWhite);
+createBox(W, H2, 0.6, 0, H1 + H2 / 2, -12, mat.aquiaWhite);
+// East Wall (X = 20)
+createBox(0.6, H1 + H2, D, 20, (H1 + H2) / 2, 0, mat.aquiaWhite);
+// West Wall (X = -20): Doorway to West Colonnade at Z = -8 (width 3.0, height 3.4)
+buildDoorWallZ(-20, 0, H1, -12, 12, -8, 3.0, 3.4, mat.aquiaWhite);
+createBox(0.6, H2, D, -20, H1 + H2 / 2, 0, mat.aquiaWhite);
+// Roof Balustrade & Flagpole
+createBox(W + 1.2, 0.7, D + 1.2, 0, 11.35, 0, mat.aquiaWhite);
+createBox(W - 2, 0.6, D - 2, 0, 11.7, 0, mat.roofSlate);
+// American Flag on Roof
+createColumn(0.08, 5.5, 0, 11.8, 0, mat.aquiaWhite);
+createBox(2.4, 1.3, 0.08, 1.25, 16.5, 0, mat.flagRed, { solid: false });
+createBox(1.0, 0.7, 0.1, 0.55, 16.8, 0, mat.flagBlue, { solid: false });
+// Windows across North & South Facades
+for (const wx of [-16, -12, -8, 8, 12, 16]) {
+createBox(2.0, 2.5, 0.7, wx, 2.7, 12, mat.glass, { solid: false });
+createBox(2.0, 2.2, 0.7, wx, 8.2, 12, mat.glass, { solid: false });
+createBox(2.0, 2.5, 0.7, wx, 2.7, -12, mat.glass, { solid: false });
+createBox(2.0, 2.2, 0.7, wx, 8.2, -12, mat.glass, { solid: false });
+}
+// --- 8. STATE FLOOR (1F) ROOMS & GRAND STAIRCASE ---
+// Layout:
+// East Wing (X: 8 to 20): The East Room (Ballroom)
+// Center North (X: -8 to 8, Z: 2 to 12): Entrance Hall & Cross Hall
+// Center South (X: -8 to 8, Z: -12 to 2): Green Room, Blue Room, Red Room
+// West Wing (X: -20 to -8): State Dining Room
+// East Room Partition (X = 8) with wide arched doors at Z = 6 and Z = -6
+buildDoorWallZ(8, 0.4, H1 - 0.4, 0, 12, 6, 3.2, 3.6, mat.creamWall);
+buildDoorWallZ(8, 0.4, H1 - 0.4, -12, 0, -6, 3.2, 3.6, mat.creamWall);
+// State Dining Room Partition (X = -8) with doors at Z = 6 and Z = -6
+buildDoorWallZ(-8, 0.4, H1 - 0.4, 0, 12, 6, 3.2, 3.6, mat.creamWall);
+buildDoorWallZ(-8, 0.4, H1 - 0.4, -12, 0, -6, 3.2, 3.6, mat.creamWall);
+// Cross Hall / State Parlors Divider (Z = 0, X = -8 to 8)
+// Divides Cross Hall from Green Room (X: 3..8), Blue Room (X: -3..3), Red Room (X: -8..-3)
+buildDoorWallX(0, 0.4, H1 - 0.4, 3, 8, 5.5, 2.2, 3.4, mat.creamWall);
+buildDoorWallX(0, 0.4, H1 - 0.4, -3, 3, 0, 2.6, 3.4, mat.creamWall);
+buildDoorWallX(0, 0.4, H1 - 0.4, -8, -3, -5.5, 2.2, 3.4, mat.creamWall);
+// Parlor Dividers (Z = -12 to 0)
+buildDoorWallZ(3, 0.4, H1 - 0.4, -12, 0, -6, 2.2, 3.4, mat.greenRoom);
+buildDoorWallZ(-3, 0.4, H1 - 0.4, -12, 0, -6, 2.2, 3.4, mat.redRoom);
+// Red Carpet in Cross Hall
+createBox(15, 0.05, 3.2, 0, 0.42, 2.2, mat.redCarpet, { solid: false });
+// Grand Staircase (In Cross Hall at X = -7.6 to -4.2, climbing from Z = 3.5 to Z = 10.5)
+const numSteps = 18;
+const stepH = (6.0 - 0.4) / numSteps;
+const stepD = 0.42;
+for (let i = 0; i < numSteps; i++) {
+const sy = 0.4 + (i + 1) * stepH;
+const sz = 3.5 + i * stepD;
+createBox(3.0, stepH, stepD + 0.08, -6.1, sy - stepH / 2, sz, mat.marbleFloor, { solid: false, walkable: true });
+}
+createBox(0.2, 1.1, 7.6, -4.5, 3.8, 7.2, mat.goldTrim);
+// --- 9. WEST WING COLONNADE & OVAL OFFICE ---
+// Covered Colonnade from X = -20 to -34 at Z = -8
+createBox(15, 0.4, 4.4, -27, 0.2, -8, mat.marbleFloor, { solid: false, walkable: true });
+createBox(15, 0.4, 4.6, -27, 4.4, -8, mat.aquiaWhite);
+for (const cx of [-22, -25, -28, -31]) {
+createColumn(0.32, 4.0, cx, 0.4, -6.1);
+createColumn(0.32, 4.0, cx, 0.4, -9.9);
+}
+// Oval Office Pavilion (Centered at X = -41, Z = -8)
+createBox(15, 0.4, 17, -41, 0.2, -8, mat.parquetFloor, { solid: false, walkable: true });
+createBox(15, 0.5, 17, -41, 4.8, -8, mat.aquiaWhite);
+// Oval Office Perimeter Walls (leaving entry at X = -34, Z = -8)
+buildDoorWallZ(-34, 0, 4.6, -16, 0, -8, 3.0, 3.4, mat.aquiaWhite);
+createBox(0.6, 4.6, 16.5, -48, 2.3, -8, mat.aquiaWhite);
+createBox(14.5, 4.6, 0.6, -41, 2.3, -16, mat.aquiaWhite);
+createBox(14.5, 4.6, 0.6, -41, 2.3, 0, mat.aquiaWhite);
+// Oval Office Presidential Rug & Resolute Desk
+const ovalRug = new THREE.Mesh(new THREE.CylinderGeometry(5.2, 5.2, 0.05, 32), mat.ovalRug);
+ovalRug.scale.set(0.85, 1, 1.15);
+ovalRug.position.set(-41, 0.42, -8);
+scene.add(ovalRug);
+// Resolute Desk
+createBox(1.8, 1.1, 3.4, -44.2, 0.95, -8, mat.mahogany);
+createBox(0.9, 1.4, 0.9, -45.6, 1.1, -8, mat.redRoom); // Presidential Chair
+// Oval Office Sofas
+createBox(3.4, 0.85, 1.3, -40.5, 0.82, -11.8, mat.creamWall);
+createBox(3.4, 0.85, 1.3, -40.5, 0.82, -4.2, mat.creamWall);
+createBox(1.6, 0.5, 2.4, -40.5, 0.65, -8, mat.mahogany); // Coffee table
+// Flags behind Resolute Desk
+createColumn(0.06, 3.4, -46.8, 0.4, -10.2, mat.goldTrim);
+createColumn(0.06, 3.4, -46.8, 0.4, -5.8, mat.goldTrim);
+addChandelier(-41, 4.2, -8, 0xffedd5, 1.6, 20);
+// --- 10. SECOND FLOOR (2F) EXECUTIVE RESIDENCE ---
+// Second Floor Slab (Leave stairwell opening at X: -7.8 to -4.4, Z: 3.3 to 11.2)
+createBox(12.2, 0.4, D, -13.9, 5.8, 0, mat.parquetFloor, { solid: true, walkable: true });
+createBox(24.4, 0.4, D, 7.8, 5.8, 0, mat.parquetFloor, { solid: true, walkable: true });
+createBox(3.4, 0.4, 15.3, -6.1, 5.8, -4.35, mat.parquetFloor, { solid: true, walkable: true });
+// Stairwell Railing on Floor 2
+createBox(0.2, 1.1, 7.9, -4.4, 6.55, 7.25, mat.goldTrim);
+createBox(3.4, 1.1, 0.2, -6.1, 6.55, 3.3, mat.goldTrim);
+// 2F Rooms:
+// East Wing (X: 8 to 20): Lincoln Bedroom (Z: -12 to 0) & Treaty Room (Z: 0 to 12)
+buildDoorWallZ(8, 6.0, H2 - 0.2, -12, 0, -6, 2.6, 3.2, mat.creamWall);
+buildDoorWallZ(8, 6.0, H2 - 0.2, 0, 12, 6, 2.6, 3.2, mat.creamWall);
+createBox(12, H2 - 0.2, 0.5, 14, 6.0 + (H2 - 0.2) / 2, 0, mat.creamWall);
+// West Wing (X: -20 to -8): Master Bedroom (Z: -12 to 0) & Master Bathroom (Z: 0 to 12)
+buildDoorWallZ(-8, 6.0, H2 - 0.2, -12, 0, -6, 2.6, 3.2, mat.creamWall);
+buildDoorWallZ(-8, 6.0, H2 - 0.2, 0, 12, 2, 2.4, 3.2, mat.creamWall);
+createBox(12, H2 - 0.2, 0.5, -14, 6.0 + (H2 - 0.2) / 2, 0, mat.creamWall);
+// --- 11. INTERIOR FURNISHINGS ---
+// EAST ROOM (1F East Wing: X = 14)
+createBox(8.5, 0.06, 18, 14, 0.42, 0, mat.eastRoomGold, { solid: false });
+createBox(2.6, 1.2, 2.2, 17.5, 1.0, -7, mat.mahogany); // Grand Piano
+for (const pz of [-4, 0, 4, 8]) {
+createBox(1.1, 0.7, 1.1, 17.8, 0.75, pz, mat.goldTrim);
+createBox(1.1, 0.7, 1.1, 10.2, 0.75, pz, mat.goldTrim);
+}
+// STATE DINING ROOM (1F West Wing: X = -14)
+createBox(3.6, 0.16, 12.5, -14, 1.35, -1, mat.mahogany); // Banquet Table
+for (const tz of [-6, -2, 2, 4]) {
+createBox(0.5, 0.9, 0.5, -15.2, 0.85, tz, mat.mahogany);
+createBox(0.5, 0.9, 0.5, -12.8, 0.85, tz, mat.mahogany);
+}
+for (let cz = -6.5; cz <= 4.5; cz += 2.2) {
+createBox(0.8, 0.65, 0.8, -16.4, 0.72, cz, mat.redRoom);
+createBox(0.8, 0.65, 0.8, -11.6, 0.72, cz, mat.redRoom);
+}
+// GREEN, BLUE & RED PARLORS (1F South)
+createBox(3.4, 0.75, 1.4, 5.5, 0.78, -9.5, mat.greenRoom); // Green Room Sofa
+createBox(3.4, 0.75, 1.4, 0, 0.78, -9.5, mat.blueRoom);    // Blue Room Sofa
+createBox(3.4, 0.75, 1.4, -5.5, 0.78, -9.5, mat.redRoom);  // Red Room Sofa
+// LINCOLN BEDROOM (2F Back East: X = 14, Z = -6)
+createBox(4.4, 0.7, 3.6, 16.8, 6.35, -6, mat.mahogany);
+createBox(4.0, 0.45, 3.3, 16.8, 6.9, -6, mat.bedSheet);
+createBox(2.9, 0.48, 3.35, 16.2, 6.92, -6, mat.redRoom);
+createBox(0.3, 3.4, 3.8, 19.1, 7.7, -6, mat.mahogany); // Tall Victorian Headboard
+// TREATY ROOM (2F Front East: X = 14, Z = 6)
+createBox(5.2, 0.16, 2.4, 14, 6.95, 6, mat.mahogany); // Treaty Table
+createBox(0.5, 0.9, 0.5, 12, 6.45, 5.3, mat.mahogany);
+createBox(0.5, 0.9, 0.5, 16, 6.45, 6.7, mat.mahogany);
+// MASTER BEDROOM (2F Back West: X = -14, Z = -6)
+createBox(4.4, 0.7, 3.6, -16.8, 6.35, -6, mat.mahogany);
+createBox(4.0, 0.45, 3.3, -16.8, 6.9, -6, mat.bedSheet);
+createBox(2.9, 0.48, 3.35, -16.2, 6.92, -6, mat.bedBlanket);
+createBox(0.3, 2.4, 3.8, -19.1, 7.2, -6, mat.mahogany);
+// MASTER BATHROOM (2F Front West: X = -14, Z = 6)
+createBox(11.4, 0.06, 11.4, -14, 6.02, 6, mat.marbleFloor, { solid: false });
+createBox(3.6, 0.9, 1.8, -17.5, 6.45, 10.2, mat.marbleFloor); // Tub
+createBox(3.2, 0.1, 1.4, -17.5, 6.88, 10.2, mat.water, { solid: false });
+createBox(1.3, 1.1, 3.8, -18.8, 6.55, 5.0, mat.marbleFloor);  // Vanity
+createBox(0.9, 0.7, 1.0, -18.5, 6.35, 1.6, mat.marbleFloor);  // Toilet
+// Chandeliers
+addChandelier(0, 5.0, 5);        // Entrance Hall
+addChandelier(14, 5.0, -5);      // East Room North
+addChandelier(14, 5.0, 5);       // East Room South
+addChandelier(-14, 5.0, 0);      // State Dining Room
+addChandelier(0, 5.0, -6);       // Blue Room
+addChandelier(0, 10.4, 0);       // 2F Center Hall
+addChandelier(14, 10.4, -6);     // Lincoln Bedroom
+addChandelier(14, 10.4, 6);      // Treaty Room
+addChandelier(-14, 10.4, -6);    // Master Bedroom
+addChandelier(-14, 10.4, 6);     // Master Bathroom
+// --- 12. PLAYER CONTROLLER & ROOM TRACKER ---
+const controls = new PointerLockControls(camera, document.body);
+const overlay = document.getElementById('overlay');
+const hud = document.getElementById('hud');
+const roomLabel = document.getElementById('room-name');
+const crosshair = document.getElementById('crosshair');
+overlay.addEventListener('click', () => controls.lock());
+controls.addEventListener('lock', () => {
+overlay.style.display = 'none';
+hud.style.display = 'block';
+crosshair.style.display = 'block';
+});
+controls.addEventListener('unlock', () => {
+overlay.style.display = 'flex';
+hud.style.display = 'none';
+crosshair.style.display = 'none';
+});
+const player = {
+pos: new THREE.Vector3(0, 0, 38), // Start on North Lawn facing the North Portico
+velY: 0,
+radius: 0.45,
+eyeHeight: 1.75,
+onGround: true
+};
+camera.position.set(player.pos.x, player.pos.y + player.eyeHeight, player.pos.z);
+const keys = {};
+window.addEventListener('keydown', (e) => {
+keys[e.code] = true;
+if (e.code === 'Space' && player.onGround && controls.isLocked) {
+player.velY = 7.5;
+player.onGround = false;
+}
+});
+window.addEventListener('keyup', (e) => (keys[e.code] = false));
+window.addEventListener('resize', () => {
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
+});
+function resolveCollisions() {
+const feetY = player.pos.y + 0.35;
+const headY = player.pos.y + player.eyeHeight + 0.1;
+for (const box of wallColliders) {
+if (headY <= box.minY || feetY >= box.maxY) continue;
+const closestX = Math.max(box.minX, Math.min(player.pos.x, box.maxX));
+const closestZ = Math.max(box.minZ, Math.min(player.pos.z, box.maxZ));
+const dx = player.pos.x - closestX;
+const dz = player.pos.z - closestZ;
+const distSq = dx * dx + dz * dz;
+if (distSq < player.radius * player.radius) {
+const dist = Math.sqrt(distSq);
+if (dist > 0.0001) {
+const overlap = player.radius - dist;
+player.pos.x += (dx / dist) * overlap;
+player.pos.z += (dz / dist) * overlap;
+}
+}
+}
+}
+function getFloorHeight() {
+let maxFloor = 0;
+for (const f of floorSurfaces) {
+if (
+player.pos.x >= f.minX - 0.2 &&
+player.pos.x <= f.maxX + 0.2 &&
+player.pos.z >= f.minZ - 0.2 &&
+player.pos.z <= f.maxZ + 0.2
+) {
+if (f.topY <= player.pos.y + 0.65 && f.topY > maxFloor) {
+maxFloor = f.topY;
+}
+}
+}
+return maxFloor;
+}
+function updateRoomHUD() {
+const { x, y, z } = player.pos;
+// West Wing & Oval Office
+if (x < -20 && x >= -34 && z >= -10.5 && z <= -5.5) {
+roomLabel.textContent = 'West Wing Colonnade';
+return;
+}
+if (x < -34 && x >= -48 && z >= -16 && z <= 0) {
+roomLabel.textContent = 'West Wing — The Oval Office';
+return;
+}
+// Exterior Lawns
+if (z > 12 || z < -12 || x < -20 || x > 20) {
+roomLabel.textContent = z >= 0 ? 'North Lawn & Portico' : 'South Lawn & Rose Garden';
+return;
+}
+// Inside Executive Residence
+if (y < 5.2) {
+if (x > 8) roomLabel.textContent = '1F — The East Room';
+else if (x < -8) roomLabel.textContent = '1F — State Dining Room';
+else if (z >= 0) roomLabel.textContent = '1F — Entrance & Cross Hall';
+else if (x > 3) roomLabel.textContent = '1F — The Green Room';
+else if (x < -3) roomLabel.textContent = '1F — The Red Room';
+else roomLabel.textContent = '1F — The Blue Room';
+} else {
+if (x > 8 && z < 0) roomLabel.textContent = '2F — The Lincoln Bedroom';
+else if (x > 8 && z >= 0) roomLabel.textContent = '2F — The Treaty Room';
+else if (x < -8 && z < 0) roomLabel.textContent = '2F — Private Master Bedroom';
+else if (x < -8 && z >= 0) roomLabel.textContent = '2F — Master Bathroom';
+else roomLabel.textContent = '2F — Center Hall';
+}
+}
+// --- 13. ANIMATION LOOP ---
+const clock = new THREE.Clock();
+const forward = new THREE.Vector3();
+const right = new THREE.Vector3();
+function animate() {
+requestAnimationFrame(animate);
+const dt = Math.min(clock.getDelta(), 0.05);
+if (controls.isLocked) {
+camera.getWorldDirection(forward);
+forward.y = 0;
+forward.normalize();
+right.crossVectors(forward, camera.up).normalize();
+const speed = keys['ShiftLeft'] ? 11.5 : 6.5;
+let moveX = 0, moveZ = 0;
+if (keys['KeyW']) { moveX += forward.x; moveZ += forward.z; }
+if (keys['KeyS']) { moveX -= forward.x; moveZ -= forward.z; }
+if (keys['KeyD']) { moveX += right.x;   moveZ += right.z; }
+if (keys['KeyA']) { moveX -= right.x;   moveZ -= right.z; }
+const len = Math.hypot(moveX, moveZ);
+if (len > 0) {
+player.pos.x += (moveX / len) * speed * dt;
+player.pos.z += (moveZ / len) * speed * dt;
+}
+resolveCollisions();
+player.velY -= 20 * dt;
+player.pos.y += player.velY * dt;
+const floorY = getFloorHeight();
+if (player.pos.y <= floorY) {
+player.pos.y = floorY;
+player.velY = 0;
+player.onGround = true;
+}
+camera.position.set(player.pos.x, player.pos.y + player.eyeHeight, player.pos.z);
+updateRoomHUD();
+}
+renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>

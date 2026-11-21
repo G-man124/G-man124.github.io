@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js Huge Underground House & Bunker</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 13, 22, 0.86);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      z-index: 10;
+    }
+    #overlay h1 {
+      margin-bottom: 6px;
+      letter-spacing: 3px;
+      font-size: 2.2rem;
+      color: #38bdf8;
+    }
+    #overlay p {
+      color: #cbd5e1;
+      max-width: 520px;
+      line-height: 1.55;
+    }
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.78);
+      color: #f8fafc;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+      border-left: 4px solid #38bdf8;
+    }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.155.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="overlay">
+    <h1>SUBTERRANEAN ESTATE</h1>
+    <p>Click anywhere to descend into the underground complex</p>
+    <p><strong>WASD</strong> = Walk &nbsp;|&nbsp; <strong>SHIFT</strong> = Sprint &nbsp;|&nbsp; <strong>SPACE</strong> = Jump &nbsp;|&nbsp; <strong>ESC</strong> = Pause</p>
+  </div>
+  <div id="hud">Sector: <span id="room-name">Surface Bunker Entrance</span></div>
+  <div id="crosshair"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    // --- 1. SCENE, CAMERA & RENDERER ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f172a);
+    scene.fog = new THREE.Fog(0x0f172a, 45, 160);
+
+    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 300);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // --- 2. LIGHTING ---
+    const hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x1e293b, 0.55);
+    scene.add(hemiLight);
+
+    const surfaceSun = new THREE.DirectionalLight(0xfffbeb, 1.0);
+    surfaceSun.position.set(30, 50, 35);
+    surfaceSun.castShadow = true;
+    scene.add(surfaceSun);
+
+    function addLEDLight(x, y, z, color = 0xf0f9ff, intensity = 1.5, distance = 28) {
+      const light = new THREE.PointLight(color, intensity, distance);
+      light.position.set(x, y, z);
+      scene.add(light);
+
+      const panel = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 0.12, 0.8),
+        new THREE.MeshBasicMaterial({ color })
+      );
+      panel.position.set(x, y + 0.35, z);
+      scene.add(panel);
+    }
+
+    // --- 3. MATERIALS ---
+    const mat = {
+      surfaceGrass: new THREE.MeshStandardMaterial({ color: 0x365314, roughness: 0.9 }),
+      concrete: new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 }),
+      lightConcrete: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.65 }),
+      steel: new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 }),
+      hazardYellow: new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.5 }),
+      warmWall: new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.6 }),
+      accentWall: new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 }),
+      woodFloor: new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.5 }),
+      marble: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.25 }),
+      poolTile: new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }),
+      water: new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, transparent: true, opacity: 0.78 }),
+      gardenGrass: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.85 }),
+      foliage: new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.8 }),
+      trunk: new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 }),
+      sofa: new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 }),
+      bedSheet: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }),
+      bedBlanket: new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.85 }),
+      screen: new THREE.MeshBasicMaterial({ color: 0x0ea5e9 }),
+      neonCyan: new THREE.MeshBasicMaterial({ color: 0x22d3ee }),
+      glass: new THREE.MeshStandardMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.3, roughness: 0.1 })
+    };
+
+    // --- 4. COLLISION HELPERS (NO PHYSICS ENGINE) ---
+    const wallColliders = [];
+    const floorSurfaces = [];
+
+    function createBox(w, h, d, x, y, z, material, { solid = true, walkable = false, castShadow = true } = {}) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      const minX = x - w / 2, maxX = x + w / 2;
+      const minY = y - h / 2, maxY = y + h / 2;
+      const minZ = z - d / 2, maxZ = z + d / 2;
+
+      if (solid) wallColliders.push({ minX, maxX, minY, maxY, minZ, maxZ });
+      if (walkable) floorSurfaces.push({ minX, maxX, topY: maxY, minZ, maxZ });
+      return mesh;
+    }
+
+    function buildDoorWallZ(x, yBase, height, zStart, zEnd, doorZCenter, doorWidth, doorHeight, material) {
+      const thickness = 0.6;
+      const z1End = doorZCenter - doorWidth / 2;
+      const z2Start = doorZCenter + doorWidth / 2;
+
+      if (z1End > zStart) {
+        const len = z1End - zStart;
+        createBox(thickness, height, len, x, yBase + height / 2, zStart + len / 2, material);
+      }
+      if (zEnd > z2Start) {
+        const len = zEnd - z2Start;
+        createBox(thickness, height, len, x, yBase + height / 2, z2Start + len / 2, material);
+      }
+      const headerH = height - doorHeight;
+      if (headerH > 0) {
+        createBox(thickness, headerH, doorWidth, x, yBase + doorHeight + headerH / 2, doorZCenter, material);
+      }
+    }
+
+    function buildDoorWallX(z, yBase, height, xStart, xEnd, doorXCenter, doorWidth, doorHeight, material) {
+      const thickness = 0.6;
+      const x1End = doorXCenter - doorWidth / 2;
+      const x2Start = doorXCenter + doorWidth / 2;
+
+      if (x1End > xStart) {
+        const len = x1End - xStart;
+        createBox(len, height, thickness, xStart + len / 2, yBase + height / 2, z, material);
+      }
+      if (xEnd > x2Start) {
+        const len = xEnd - xStart;
+        createBox(len, height, thickness, x2Start + len / 2, yBase + height / 2, z, material);
+      }
+      const headerH = height - doorHeight;
+      if (headerH > 0) {
+        createBox(doorWidth, headerH, thickness, doorXCenter, yBase + doorHeight + headerH / 2, z, material);
+      }
+    }
+
+    // --- 5. SURFACE LEVEL (Y = 0) & BUNKER ENTRY SHAFT ---
+    // Surface ground with an opening at X: -3 to 3, Z: 22 to 36 for the bunker staircase
+    createBox(140, 0.5, 62, 0, -0.25, -9, mat.surfaceGrass, { solid: false, walkable: true });   // North/Main ground
+    createBox(140, 0.5, 60, 0, -0.25, 66, mat.surfaceGrass, { solid: false, walkable: true });   // South ground
+    createBox(67, 0.5, 14, -36.5, -0.25, 29, mat.surfaceGrass, { solid: false, walkable: true }); // West of shaft
+    createBox(67, 0.5, 14, 36.5, -0.25, 29, mat.surfaceGrass, { solid: false, walkable: true });  // East of shaft
+
+    // Surface Concrete Bunker Entrance Hood (X: -3.5 to 3.5, Z: 21.5 to 36.5)
+    createBox(0.6, 3.6, 15, -3.3, 1.8, 29, mat.concrete);
+    createBox(0.6, 3.6, 15, 3.3, 1.8, 29, mat.concrete);
+    createBox(7.2, 3.6, 0.6, 0, 1.8, 21.7, mat.concrete);
+    createBox(7.2, 0.5, 15.2, 0, 3.7, 29, mat.steel);
+    // Hazard Trim at Entrance
+    createBox(6.0, 0.3, 0.3, 0, 3.3, 36.4, mat.hazardYellow);
+
+    // Shaft Walls extending down from Y = 0 to Y = -8.0
+    createBox(0.6, 8.5, 16, -3.3, -4.0, 28, mat.concrete);
+    createBox(0.6, 8.5, 16, 3.3, -4.0, 28, mat.concrete);
+    createBox(7.2, 8.5, 0.6, 0, -4.0, 36.2, mat.concrete);
+    // Shaft North Wall (Z = 20) with Blast Doorway opening into Underground Complex (Y = -8 to -4)
+    buildDoorWallX(20, -8.0, 8.5, -3.5, 3.5, 0, 5.4, 4.2, mat.steel);
+
+    // Reinforcing Staircase descending from Z = 34 (Y = 0) down to Z = 21.5 (Y = -8.0)
+    const steps = 24;
+    const topY = 0.0;
+    const botY = -8.0;
+    const sH = (topY - botY) / steps;
+    const sD = 0.52;
+    for (let i = 0; i < steps; i++) {
+      const sy = topY - (i + 1) * sH;
+      const sz = 34.0 - i * sD;
+      createBox(5.8, sH + 0.4, sD + 0.1, 0, sy + (sH + 0.4) / 2 - sH, sz, mat.lightConcrete, { solid: false, walkable: true });
+    }
+    // Bottom Landing before Blast Door (Z: 20 to 21.6, Y = -8.0)
+    createBox(6.0, 0.5, 2.2, 0, -8.25, 20.8, mat.lightConcrete, { solid: false, walkable: true });
+
+    // --- 6. HUGE UNDERGROUND COMPLEX (Y = -8.0 to -2.0, Height = 6.0) ---
+    // Total Underground Footprint: X = -32 to +32 (Width 64m), Z = -20 to +20 (Depth 40m) -> 2,560 sq meters!
+    const FLOOR_Y = -8.0;
+    const CEIL_H = 6.0;
+
+    // Main Underground Slab & Thick Concrete Ceiling
+    createBox(64, 0.6, 40, 0, FLOOR_Y - 0.3, 0, mat.marble, { solid: false, walkable: true });
+createBox(65, 1.2, 41, 0, FLOOR_Y + CEIL_H + 0.6, 0, mat.concrete);
+// Exterior Reinforced Concrete Bunker Perimeter Walls
+createBox(64.6, CEIL_H, 0.8, 0, FLOOR_Y + CEIL_H / 2, -20, mat.concrete); // North Wall
+createBox(0.8, CEIL_H, 40.6, -32, FLOOR_Y + CEIL_H / 2, 0, mat.concrete); // West Wall
+createBox(0.8, CEIL_H, 40.6, 32, FLOOR_Y + CEIL_H / 2, 0, mat.concrete);  // East Wall
+// South Wall (Z = 20) with Blast Door Entry from Staircase at X = 0
+buildDoorWallX(20, FLOOR_Y, CEIL_H, -32, 32, 0, 5.4, 4.2, mat.steel);
+// --- 7. UNDERGROUND FLOOR PLAN & WING PARTITIONS ---
+// Central Grand Atrium & Botanical Biodome: X = -12 to +12, Z = -20 to +20
+// West Wing (X: -32 to -12):
+//   - North-West (Z: -20 to 0): Indoor Swimming Pool & Spa
+//   - South-West (Z: 0 to 20): Home Theater & Command Center
+// East Wing (X: +12 to +32):
+//   - North-East (Z: -20 to -4): Luxury Master Suite & Spa Bathroom
+//   - Center-East (Z: -4 to 8): Guest Bedroom & Second Bath
+//   - South-East (Z: 8 to 20): Gourmet Chef's Kitchen & Banquet Hall
+// West Wing Atrium Wall (X = -12) with 2 grand openings (Z = -10 for Pool, Z = 10 for Theater)
+buildDoorWallZ(-12, FLOOR_Y, CEIL_H, -20, 0, -10, 4.4, 4.0, mat.warmWall);
+buildDoorWallZ(-12, FLOOR_Y, CEIL_H, 0, 20, 10, 4.4, 4.0, mat.warmWall);
+// West Wing Divider (Z = 0, X = -32 to -12)
+createBox(20, CEIL_H, 0.6, -22, FLOOR_Y + CEIL_H / 2, 0, mat.concrete);
+// East Wing Atrium Wall (X = 12) with doors for Master Suite (Z = -12), Guest Suite (Z = 2), Kitchen (Z = 14)
+buildDoorWallZ(12, FLOOR_Y, CEIL_H, -20, -4, -12, 3.0, 3.6, mat.warmWall);
+buildDoorWallZ(12, FLOOR_Y, CEIL_H, -4, 8, 2, 2.8, 3.6, mat.warmWall);
+buildDoorWallZ(12, FLOOR_Y, CEIL_H, 8, 20, 14, 4.0, 3.8, mat.warmWall);
+// East Wing Horizontal Dividers
+createBox(20, CEIL_H, 0.6, 22, FLOOR_Y + CEIL_H / 2, -4, mat.warmWall); // Master / Guest divider
+createBox(20, CEIL_H, 0.6, 22, FLOOR_Y + CEIL_H / 2, 8, mat.warmWall);  // Guest / Kitchen divider
+// Master Suite Internal Bathroom Wall (X = 24, Z = -20 to -4, door at Z = -12)
+buildDoorWallZ(24, FLOOR_Y, CEIL_H, -20, -4, -12, 2.4, 3.4, mat.warmWall);
+// --- 8. CENTRAL ATRIUM & BOTANICAL BIODOME (X: -12 to 12) ---
+// Structural Support Pillars with Neon Cyan Accent Strips
+for (const px of [-9.5, 9.5]) {
+for (const pz of [-15, -5, 5, 15]) {
+createBox(1.1, CEIL_H, 1.1, px, FLOOR_Y + CEIL_H / 2, pz, mat.steel);
+createBox(1.16, 0.25, 1.16, px, FLOOR_Y + 3.0, pz, mat.neonCyan, { solid: false });
+}
+}
+// Center Botanical Garden Island (X: -5 to 5, Z: -14 to 4)
+createBox(10.4, 0.5, 18.4, 0, FLOOR_Y + 0.25, -5, mat.concrete);
+createBox(9.6, 0.55, 17.6, 0, FLOOR_Y + 0.28, -5, mat.gardenGrass, { solid: false });
+// Glowing Artificial Skylight Overhead
+createBox(11, 0.15, 19, 0, FLOOR_Y + CEIL_H - 0.08, -5, new THREE.MeshBasicMaterial({ color: 0xe0f2fe }), { solid: false });
+// Indoor Trees in Botanical Garden
+for (const [tx, tz] of [[-2.5, -10], [2.5, -6], [-2.0, -1], [2.2, -11]]) {
+const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.4, 3.2, 10), mat.trunk);
+trunk.position.set(tx, FLOOR_Y + 2.0, tz);
+scene.add(trunk);
+const canopy = new THREE.Mesh(new THREE.DodecahedronGeometry(1.65, 1), mat.foliage);
+canopy.position.set(tx, FLOOR_Y + 4.1, tz);
+scene.add(canopy);
+}
+// Atrium Lounge Seating (Z = 10)
+createBox(5.5, 0.65, 1.6, 0, FLOOR_Y + 0.32, 9.5, mat.sofa);
+createBox(3.2, 0.45, 1.6, 0, FLOOR_Y + 0.22, 12.2, mat.woodFloor);
+// --- 9. WEST WING: INDOOR SWIMMING POOL & SPA (X: -32 to -12, Z: -20 to 0) ---
+createBox(19.4, 0.06, 19.4, -22, FLOOR_Y + 0.03, -10, mat.poolTile, { solid: false });
+// Raised Infinity Pool Deck & Glowing Water Basin
+createBox(14, 0.75, 11, -23.5, FLOOR_Y + 0.38, -10.5, mat.marble);
+createBox(12.6, 0.8, 9.6, -23.5, FLOOR_Y + 0.4, -10.5, mat.water, { solid: false });
+// Poolside Loungers
+for (const lz of [-17.5, -3.5]) {
+createBox(2.4, 0.45, 1.1, -26, FLOOR_Y + 0.22, lz, mat.warmWall);
+createBox(2.4, 0.45, 1.1, -21, FLOOR_Y + 0.22, lz, mat.warmWall);
+}
+// --- 10. WEST WING: HOME THEATER & COMMAND CENTER (X: -32 to -12, Z: 0 to 20) ---
+// Giant Panoramic Screen on West Wall (X = -31.4)
+createBox(0.3, 4.2, 12.0, -31.4, FLOOR_Y + 2.8, 10, mat.screen);
+// Tiered Theater Recliner Rows
+createBox(2.2, 0.65, 10.5, -24.5, FLOOR_Y + 0.32, 10, mat.sofa);
+createBox(2.4, 1.05, 10.5, -20.5, FLOOR_Y + 0.52, 10, mat.sofa);
+// Supercomputer / Control Console along North Wall (Z = -0.8)
+createBox(12, 1.1, 1.4, -22, FLOOR_Y + 0.55, 1.2, mat.steel);
+createBox(11, 0.9, 0.15, -22, FLOOR_Y + 1.65, 0.7, mat.screen, { solid: false });
+// --- 11. EAST WING: MASTER SUITE & LUXURY BATH (X: 12 to 32, Z: -20 to -4) ---
+// Master Bedroom (X: 12 to 24)
+createBox(4.8, 0.65, 4.2, 17.5, FLOOR_Y + 0.32, -16.5, mat.woodFloor); // King Bed Frame
+createBox(4.4, 0.45, 3.8, 17.5, FLOOR_Y + 0.85, -16.5, mat.bedSheet);
+createBox(3.4, 0.48, 3.85, 17.5, FLOOR_Y + 0.87, -15.8, mat.bedBlanket);
+createBox(1.2, 0.25, 0.8, 16.4, FLOOR_Y + 1.15, -17.8, mat.warmWall);
+createBox(1.2, 0.25, 0.8, 18.6, FLOOR_Y + 1.15, -17.8, mat.warmWall);
+// Walk-in Wardrobe Cabinets
+createBox(1.2, 3.2, 6.5, 13.0, FLOOR_Y + 1.6, -8.5, mat.woodFloor);
+// Master Spa Bathroom (X: 24 to 32, Z: -20 to -4)
+createBox(4.5, 0.9, 2.4, 29.2, FLOOR_Y + 0.45, -18.2, mat.marble); // Sunken Soaking Tub
+createBox(4.0, 0.12, 2.0, 29.2, FLOOR_Y + 0.88, -18.2, mat.water, { solid: false });
+createBox(1.4, 1.1, 5.2, 30.8, FLOOR_Y + 0.55, -11.5, mat.marble); // Double Vanity
+createBox(0.1, 1.5, 4.8, 31.4, FLOOR_Y + 2.1, -11.5, mat.glass, { solid: false });
+createBox(1.0, 0.75, 1.2, 30.8, FLOOR_Y + 0.38, -6.0, mat.warmWall); // Toilet
+// --- 12. EAST WING: GUEST BEDROOM (X: 12 to 32, Z: -4 to 8) ---
+createBox(4.0, 0.6, 3.2, 28.8, FLOOR_Y + 0.3, 2.0, mat.woodFloor);
+createBox(3.7, 0.4, 2.9, 28.8, FLOOR_Y + 0.8, 2.0, mat.bedSheet);
+createBox(2.6, 0.44, 2.95, 28.3, FLOOR_Y + 0.82, 2.0, mat.bedBlanket);
+createBox(1.1, 1.2, 3.6, 20.0, FLOOR_Y + 0.6, -2.8, mat.woodFloor);
+// --- 13. EAST WING: GOURMET KITCHEN & BANQUET HALL (X: 12 to 32, Z: 8 to 20) ---
+// Perimeter Counters & Appliances
+createBox(14, 1.1, 1.4, 23, FLOOR_Y + 0.55, 18.8, mat.warmWall);
+createBox(1.4, 1.1, 9.5, 30.8, FLOOR_Y + 0.55, 14.0, mat.warmWall);
+// Chef's Island
+createBox(6.5, 1.1, 2.2, 24.5, FLOOR_Y + 0.55, 14.2, mat.steel);
+// Long Banquet Dining Table
+createBox(6.5, 0.16, 2.8, 17.5, FLOOR_Y + 1.15, 13.8, mat.woodFloor);
+for (const tx of [14.8, 20.2]) {
+createBox(0.5, 1.0, 0.5, tx, FLOOR_Y + 0.55, 12.8, mat.steel);
+createBox(0.5, 1.0, 0.5, tx, FLOOR_Y + 0.55, 14.8, mat.steel);
+}
+// --- 14. UNDERGROUND LED LIGHTING GRID ---
+const lightY = FLOOR_Y + CEIL_H - 0.5;
+addLEDLight(0, lightY, 12);
+addLEDLight(0, lightY, -16);
+addLEDLight(-22, lightY, -10, 0xbae6fd, 1.6, 32); // Pool cool light
+addLEDLight(-22, lightY, 10, 0xe0e7ff, 1.2, 30);  // Theater light
+addLEDLight(18, lightY, -12, 0xffedd5, 1.4, 26);  // Master Bedroom
+addLEDLight(28, lightY, -12, 0xf0f9ff, 1.4, 24);  // Master Bath
+addLEDLight(22, lightY, 2, 0xffedd5, 1.4, 26);    // Guest Room
+addLEDLight(22, lightY, 14, 0xffedd5, 1.5, 28);   // Kitchen & Banquet Hall
+// --- 15. PLAYER CONTROLLER & SECTOR HUD ---
+const controls = new PointerLockControls(camera, document.body);
+const overlay = document.getElementById('overlay');
+const hud = document.getElementById('hud');
+const roomLabel = document.getElementById('room-name');
+const crosshair = document.getElementById('crosshair');
+overlay.addEventListener('click', () => controls.lock());
+controls.addEventListener('lock', () => {
+overlay.style.display = 'none';
+hud.style.display = 'block';
+crosshair.style.display = 'block';
+});
+controls.addEventListener('unlock', () => {
+overlay.style.display = 'flex';
+hud.style.display = 'none';
+crosshair.style.display = 'none';
+});
+const player = {
+pos: new THREE.Vector3(0, 0, 39), // Start on surface right in front of the bunker entrance
+velY: 0,
+radius: 0.45,
+eyeHeight: 1.75,
+onGround: true
+};
+camera.position.set(player.pos.x, player.pos.y + player.eyeHeight, player.pos.z);
+const keys = {};
+window.addEventListener('keydown', (e) => {
+keys[e.code] = true;
+if (e.code === 'Space' && player.onGround && controls.isLocked) {
+player.velY = 7.5;
+player.onGround = false;
+}
+});
+window.addEventListener('keyup', (e) => (keys[e.code] = false));
+window.addEventListener('resize', () => {
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
+});
+function resolveCollisions() {
+const feetY = player.pos.y + 0.35;
+const headY = player.pos.y + player.eyeHeight + 0.1;
+for (const box of wallColliders) {
+if (headY <= box.minY || feetY >= box.maxY) continue;
+const closestX = Math.max(box.minX, Math.min(player.pos.x, box.maxX));
+const closestZ = Math.max(box.minZ, Math.min(player.pos.z, box.maxZ));
+const dx = player.pos.x - closestX;
+const dz = player.pos.z - closestZ;
+const distSq = dx * dx + dz * dz;
+if (distSq < player.radius * player.radius) {
+const dist = Math.sqrt(distSq);
+if (dist > 0.0001) {
+const overlap = player.radius - dist;
+player.pos.x += (dx / dist) * overlap;
+player.pos.z += (dz / dist) * overlap;
+}
+}
+}
+}
+function getFloorHeight() {
+let maxFloor = -50;
+for (const f of floorSurfaces) {
+if (
+player.pos.x >= f.minX - 0.2 &&
+player.pos.x <= f.maxX + 0.2 &&
+player.pos.z >= f.minZ - 0.2 &&
+player.pos.z <= f.maxZ + 0.2
+) {
+if (f.topY <= player.pos.y + 0.65 && f.topY > maxFloor) {
+maxFloor = f.topY;
+}
+}
+}
+return maxFloor;
+}
+function updateRoomHUD() {
+const { x, y, z } = player.pos;
+if (y > -1.0) {
+roomLabel.textContent = 'Surface Bunker Entrance';
+} else if (z > 20) {
+roomLabel.textContent = 'Access Stairwell (Depth: ' + Math.abs(Math.round(y * 3.28)) + ' ft)';
+} else if (x >= -12 && x <= 12) {
+roomLabel.textContent = z < 4 ? 'Central Atrium & Botanical Biodome' : 'Main Blast Door & Lounge';
+} else if (x < -12) {
+roomLabel.textContent = z < 0 ? 'West Wing — Indoor Infinity Pool' : 'West Wing — IMAX Theater & Command Center';
+} else {
+if (z < -4) roomLabel.textContent = x > 24 ? 'East Wing — Master Spa Bathroom' : 'East Wing — Master Bedroom';
+else if (z < 8) roomLabel.textContent = 'East Wing — Guest Suite';
+else roomLabel.textContent = 'East Wing — Chef Kitchen & Banquet Hall';
+}
+}
+// --- 16. ANIMATION LOOP ---
+const clock = new THREE.Clock();
+const forward = new THREE.Vector3();
+const right = new THREE.Vector3();
+function animate() {
+requestAnimationFrame(animate);
+const dt = Math.min(clock.getDelta(), 0.05);
+if (controls.isLocked) {
+camera.getWorldDirection(forward);
+forward.y = 0;
+forward.normalize();
+right.crossVectors(forward, camera.up).normalize();
+const speed = keys['ShiftLeft'] ? 12.0 : 6.8;
+let moveX = 0, moveZ = 0;
+if (keys['KeyW']) { moveX += forward.x; moveZ += forward.z; }
+if (keys['KeyS']) { moveX -= forward.x; moveZ -= forward.z; }
+if (keys['KeyD']) { moveX += right.x;   moveZ += right.z; }
+if (keys['KeyA']) { moveX -= right.x;   moveZ -= right.z; }
+const len = Math.hypot(moveX, moveZ);
+if (len > 0) {
+player.pos.x += (moveX / len) * speed * dt;
+player.pos.z += (moveZ / len) * speed * dt;
+}
+resolveCollisions();
+player.velY -= 20 * dt;
+player.pos.y += player.velY * dt;
+const floorY = getFloorHeight();
+if (player.pos.y <= floorY) {
+player.pos.y = floorY;
+player.velY = 0;
+player.onGround = true;
+}
+camera.position.set(player.pos.x, player.pos.y + player.eyeHeight, player.pos.z);
+updateRoomHUD();
+}
+renderer.render(scene, camera);
+}
+animate();
+
+
+</script>
+</body>
+</html>

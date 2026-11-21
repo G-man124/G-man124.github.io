@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js 3D Cozy House Explorer</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.8);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      z-index: 10;
+    }
+    #overlay h1 {
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+      font-size: 2rem;
+    }
+    #overlay p {
+      color: #cbd5e1;
+      max-width: 480px;
+      line-height: 1.5;
+    }
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.7);
+      color: #f8fafc;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.75);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.155.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="overlay">
+    <h1>SUBURBAN HOME</h1>
+    <p>Click anywhere to explore</p>
+    <p><strong>WASD</strong> = Walk &nbsp;|&nbsp; <strong>SHIFT</strong> = Sprint &nbsp;|&nbsp; <strong>SPACE</strong> = Jump &nbsp;|&nbsp; <strong>ESC</strong> = Pause</p>
+  </div>
+  <div id="hud">Room: <span id="room-name">Front Yard</span></div>
+  <div id="crosshair"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    // --- 1. SCENE, CAMERA & RENDERER ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xbae6fd);
+    scene.fog = new THREE.Fog(0xbae6fd, 30, 120);
+
+    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 250);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // --- 2. LIGHTING ---
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x4d7c0f, 0.8);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.1);
+    sunLight.position.set(25, 45, 30);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.left = -35;
+    sunLight.shadow.camera.right = 35;
+    sunLight.shadow.camera.top = 35;
+    sunLight.shadow.camera.bottom = -35;
+    scene.add(sunLight);
+
+    function addCeilingLight(x, y, z, color = 0xffedd5, intensity = 1.2, distance = 16) {
+      const light = new THREE.PointLight(color, intensity, distance);
+      light.position.set(x, y, z);
+      scene.add(light);
+
+      const fixture = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.35, 0.12, 16),
+        new THREE.MeshBasicMaterial({ color: 0xfef3c7 })
+      );
+      fixture.position.set(x, y + 0.3, z);
+      scene.add(fixture);
+    }
+
+    // --- 3. MATERIALS ---
+    const mat = {
+      grass: new THREE.MeshStandardMaterial({ color: 0x4d7c0f, roughness: 0.9 }),
+      concrete: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.85 }),
+      siding: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.7 }),
+      brick: new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.8 }),
+      drywall: new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.75 }),
+      warmWall: new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.75 }),
+      oakFloor: new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.55 }),
+      tile: new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 }),
+      carpet: new THREE.MeshStandardMaterial({ color: 0xd6d3d1, roughness: 0.9 }),
+      rug: new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.9 }),
+      wood: new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.5 }),
+      couch: new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.85 }),
+      bedSheet: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }),
+      blanket: new THREE.MeshStandardMaterial({ color: 0x0f766e, roughness: 0.85 }),
+      porcelain: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }),
+      appliance: new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.5, roughness: 0.3 }),
+      water: new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, transparent: true, opacity: 0.75 }),
+      roof: new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }),
+      fence: new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.75 }),
+      glass: new THREE.MeshStandardMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.35, roughness: 0.1 })
+    };
+
+    // --- 4. COLLISION HELPERS (NO PHYSICS ENGINE) ---
+    const wallColliders = [];
+    const floorSurfaces = [];
+
+    function createBox(w, h, d, x, y, z, material, { solid = true, walkable = false, castShadow = true } = {}) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      const minX = x - w / 2, maxX = x + w / 2;
+      const minY = y - h / 2, maxY = y + h / 2;
+      const minZ = z - d / 2, maxZ = z + d / 2;
+
+      if (solid) wallColliders.push({ minX, maxX, minY, maxY, minZ, maxZ });
+      if (walkable) floorSurfaces.push({ minX, maxX, topY: maxY, minZ, maxZ });
+      return mesh;
+    }
+
+    function buildDoorWallZ(x, yBase, height, zStart, zEnd, doorZCenter, doorWidth, doorHeight, material) {
+      const thickness = 0.35;
+      const z1End = doorZCenter - doorWidth / 2;
+      const z2Start = doorZCenter + doorWidth / 2;
+
+      if (z1End > zStart) {
+        const len = z1End - zStart;
+        createBox(thickness, height, len, x, yBase + height / 2, zStart + len / 2, material);
+      }
+      if (zEnd > z2Start) {
+        const len = zEnd - z2Start;
+        createBox(thickness, height, len, x, yBase + height / 2, z2Start + len / 2, material);
+      }
+      const headerH = height - doorHeight;
+      if (headerH > 0) {
+        createBox(thickness, headerH, doorWidth, x, yBase + doorHeight + headerH / 2, doorZCenter, material);
+      }
+    }
+
+    function buildDoorWallX(z, yBase, height, xStart, xEnd, doorXCenter, doorWidth, doorHeight, material) {
+      const thickness = 0.35;
+      const x1End = doorXCenter - doorWidth / 2;
+      const x2Start = doorXCenter + doorWidth / 2;
+
+      if (x1End > xStart) {
+        const len = x1End - xStart;
+        createBox(len, height, thickness, xStart + len / 2, yBase + height / 2, z, material);
+      }
+      if (xEnd > x2Start) {
+        const len = xEnd - xStart;
+        createBox(len, height, thickness, x2Start + len / 2, yBase + height / 2, z, material);
+      }
+      const headerH = height - doorHeight;
+      if (headerH > 0) {
+        createBox(doorWidth, headerH, thickness, doorXCenter, yBase + doorHeight + headerH / 2, z, material);
+      }
+    }
+
+    // --- 5. YARD, DRIVEWAY & FENCE ---
+    // Lawn
+    createBox(120, 0.5, 120, 0, -0.25, 0, mat.grass, { solid: false, walkable: true, castShadow: false });
+    // Driveway leading to Garage (X = 6 to 12, Z = 7 to 26)
+    createBox(6.2, 0.06, 19, 9, 0.03, 16.5, mat.concrete, { solid: false, walkable: true, castShadow: false });
+    // Front Walkway to Porch (X = -2 to 0, Z = 9 to 22)
+    createBox(2.2, 0.06, 13, -1, 0.03, 15.5, mat.concrete, { solid: false, walkable: true, castShadow: false });
+
+    // Backyard Wooden Privacy Fence
+    createBox(0.25, 2.0, 16, -15, 1.0, -15, mat.fence);
+    createBox(0.25, 2.0, 16, 15, 1.0, -15, mat.fence);
+    createBox(30.25, 2.0, 0.25, 0, 1.0, -23, mat.fence);
+    createBox(4.5, 2.0, 0.25, -12.75, 1.0, -7, mat.fence);
+    createBox(2.5, 2.0, 0.25, 13.75, 1.0, -7, mat.fence);
+
+    // --- 6. HOUSE STRUCTURE ---
+    // Main House: X = -10.5 to 5.5 (Width 16), Z = -7 to 7 (Depth 14), Ceiling Height H = 3.8
+    // Attached Garage: X = 5.5 to 12.5 (Width 7), Z = -5 to 7 (Depth 12)
+    const H = 3.8;
+
+    // House Floor Slab & Front Porch
+    createBox(16, 0.3, 14, -2.5, 0.15, 0, mat.oakFloor, { solid: false, walkable: true });
+    createBox(6.5, 0.25, 2.5, -1, 0.125, 8.25, mat.concrete, { solid: false, walkable: true });
+    // Garage Floor Slab
+    createBox(7, 0.12, 12, 9, 0.06, 1, mat.concrete, { solid: false, walkable: true });
+
+    // Porch Posts & Overhang
+    createBox(0.25, 3.4, 0.25, -4.0, 1.95, 9.2, mat.drywall);
+    createBox(0.25, 3.4, 0.25, 2.0, 1.95, 9.2, mat.drywall);
+    createBox(6.8, 0.25, 2.8, -1, 3.7, 8.3, mat.roof);
+
+    // EXTERIOR WALLS
+    // Front Wall (Z = 7): Front door at X = -1 (width 1.6, height 2.6)
+    buildDoorWallX(7, 0, H, -10.5, 5.5, -1, 1.6, 2.6, mat.siding);
+    // Back Wall (Z = -7): Back patio door at X = 2.0 (width 1.6, height 2.6)
+    buildDoorWallX(-7, 0, H, -10.5, 5.5, 2.0, 1.6, 2.6, mat.siding);
+    // Left Wall (X = -10.5)
+    createBox(0.4, H, 14, -10.5, H / 2, 0, mat.siding);
+    // Right House / Garage Shared Wall (X = 5.5) with interior door at Z = 2.5
+    buildDoorWallZ(5.5, 0, H, -7, 7, 2.5, 1.4, 2.5, mat.drywall);
+
+    // Garage Walls (X = 5.5 to 12.5, Z = -5 to 7)
+    createBox(0.4, H, 12, 12.5, H / 2, 1, mat.siding);
+createBox(7, H, 0.4, 9, H / 2, -5, mat.siding);
+// Open Garage Doorway at Z = 7 (X = 6.5 to 11.5, height 2.6)
+buildDoorWallX(7, 0, H, 5.5, 12.5, 9, 5.0, 2.6, mat.siding);
+// Windows
+createBox(2.2, 1.4, 0.45, 2.5, 2.0, 7, mat.glass, { solid: false });   // Living Room Front
+createBox(2.0, 1.4, 0.45, -7.0, 2.0, 7, mat.glass, { solid: false });  // Bedroom Front
+createBox(2.2, 1.4, 0.45, -2.5, 2.0, -7, mat.glass, { solid: false }); // Kitchen Back
+createBox(1.4, 1.1, 0.45, -8.0, 2.2, -7, mat.glass, { solid: false }); // Bathroom Back
+// Pitched Roof (Gable style using rotated boxes)
+const roofLeft = new THREE.Mesh(new THREE.BoxGeometry(10.5, 0.35, 15.2), mat.roof);
+roofLeft.position.set(-7.2, 4.9, 0);
+roofLeft.rotation.z = 0.32;
+roofLeft.castShadow = true;
+scene.add(roofLeft);
+const roofRight = new THREE.Mesh(new THREE.BoxGeometry(10.5, 0.35, 15.2), mat.roof);
+roofRight.position.set(2.2, 4.9, 0);
+roofRight.rotation.z = -0.32;
+roofRight.castShadow = true;
+scene.add(roofRight);
+// Flat Ceiling & Garage Roof
+createBox(16.2, 0.25, 14.2, -2.5, H + 0.1, 0, mat.drywall);
+createBox(7.4, 0.35, 12.6, 9, H + 0.15, 1, mat.roof);
+// --- 7. INTERIOR ROOM PARTITIONS ---
+// Layout:
+// Right Half (X: -2.5 to 5.5): Living Room (Front Z: 0..7) & Kitchen/Dining (Back Z: -7..0) - Open concept!
+// Left Half (X: -10.5 to -2.5):
+//   Hallway (X: -4.8 to -2.5, Z: -3.5 to 2.5)
+//   Bedroom (X: -10.5 to -4.8, Z: -1.5 to 7) - Door at Z = 0.5
+//   Bathroom (X: -10.5 to -4.8, Z: -7 to -1.5) - Door at Z = -3.0
+// Hallway Wall along X = -2.5 (open entry from Living Room at Z = 1.0, width 2.2)
+buildDoorWallZ(-2.5, 0.3, H - 0.3, -7, 7, 1.0, 2.2, 2.6, mat.drywall);
+// Bedroom & Bathroom Wall along X = -4.8
+buildDoorWallZ(-4.8, 0.3, H - 0.3, -1.5, 7, 0.5, 1.3, 2.5, mat.drywall);   // Bedroom Door
+buildDoorWallZ(-4.8, 0.3, H - 0.3, -7, -1.5, -3.2, 1.2, 2.5, mat.drywall); // Bathroom Door
+// Divider between Bedroom and Bathroom (Z = -1.5, X = -10.5 to -4.8)
+createBox(5.7, H - 0.3, 0.3, -7.65, 0.3 + (H - 0.3) / 2, -1.5, mat.drywall);
+// Floor Overlays
+createBox(7.8, 0.04, 6.8, 1.5, 0.32, -3.5, mat.tile, { solid: false });     // Kitchen Tile
+createBox(5.5, 0.04, 5.3, -7.65, 0.32, -4.2, mat.tile, { solid: false });   // Bathroom Tile
+createBox(5.5, 0.04, 8.3, -7.65, 0.32, 2.75, mat.carpet, { solid: false }); // Bedroom Carpet
+// --- 8. FURNITURE & APPLIANCES ---
+// LIVING ROOM (X: -2.5 to 5.5, Z: 0 to 7)
+createBox(3.4, 0.04, 2.4, 1.8, 0.32, 3.6, mat.rug, { solid: false });
+// Couch facing TV
+createBox(3.0, 0.55, 1.1, 1.8, 0.58, 2.1, mat.couch);
+createBox(3.0, 1.0, 0.3, 1.8, 0.8, 1.65, mat.couch);
+// Coffee Table
+createBox(1.5, 0.42, 0.8, 1.8, 0.51, 3.6, mat.wood);
+// TV Stand & Flat-Screen TV against front wall (Z = 6.5)
+createBox(2.2, 0.6, 0.6, 1.8, 0.6, 6.4, mat.wood);
+createBox(1.8, 1.05, 0.1, 1.8, 1.5, 6.5, new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+// KITCHEN & DINING (X: -2.5 to 5.5, Z: -7 to 0)
+// Kitchen Counter along X = 5.0 (Z: -6.5 to -1.5)
+createBox(0.9, 0.95, 5.0, 4.9, 0.78, -4.0, mat.wood);
+createBox(0.95, 0.08, 5.05, 4.9, 1.28, -4.0, mat.porcelain);
+// Stove & Refrigerator
+createBox(0.95, 0.95, 1.0, 4.88, 0.78, -3.5, mat.appliance); // Stove
+createBox(1.0, 2.1, 1.0, 4.85, 1.35, -6.2, mat.appliance);   // Fridge
+// Kitchen Dining Table & Chairs
+createBox(2.2, 0.1, 1.3, 0.2, 1.05, -4.2, mat.wood);
+createBox(0.2, 0.75, 0.2, -0.7, 0.68, -4.7, mat.wood);
+createBox(0.2, 0.75, 0.2, 1.1, 0.68, -4.7, mat.wood);
+createBox(0.2, 0.75, 0.2, -0.7, 0.68, -3.7, mat.wood);
+createBox(0.2, 0.75, 0.2, 1.1, 0.68, -3.7, mat.wood);
+for (const cx of [-0.3, 0.7]) {
+createBox(0.55, 0.5, 0.55, cx, 0.55, -5.2, mat.couch);
+createBox(0.55, 0.5, 0.55, cx, 0.55, -3.2, mat.couch);
+}
+// BEDROOM (X: -10.5 to -4.8, Z: -1.5 to 7)
+// Queen Bed against left wall (X = -10.2)
+createBox(2.6, 0.5, 2.1, -8.9, 0.55, 3.8, mat.wood);
+createBox(2.4, 0.35, 1.9, -8.9, 0.95, 3.8, mat.bedSheet);
+createBox(1.7, 0.38, 1.95, -8.5, 0.97, 3.8, mat.blanket);
+createBox(0.5, 0.18, 0.7, -9.7, 1.18, 3.3, mat.porcelain);
+createBox(0.5, 0.18, 0.7, -9.7, 1.18, 4.3, mat.porcelain);
+createBox(0.2, 1.4, 2.2, -10.2, 1.1, 3.8, mat.wood); // Headboard
+// Nightstand & Dresser
+createBox(0.6, 0.6, 0.6, -9.9, 0.6, 5.4, mat.wood);
+createBox(0.65, 1.0, 1.8, -5.4, 0.8, 4.5, mat.wood);
+// BATHROOM (X: -10.5 to -4.8, Z: -7 to -1.5)
+// Shower / Bathtub
+createBox(2.0, 0.65, 1.1, -9.3, 0.62, -6.2, mat.porcelain);
+createBox(1.8, 0.08, 0.9, -9.3, 0.92, -6.2, mat.water, { solid: false });
+// Sink Vanity & Mirror
+createBox(0.75, 0.9, 1.6, -9.9, 0.75, -3.6, mat.porcelain);
+createBox(0.08, 1.0, 1.4, -10.25, 1.85, -3.6, mat.glass, { solid: false });
+// Toilet
+createBox(0.55, 0.5, 0.75, -6.2, 0.55, -6.4, mat.porcelain);
+createBox(0.3, 0.85, 0.65, -6.2, 0.8, -6.65, mat.porcelain);
+// GARAGE WORKBENCH & SHELVES (X: 5.5 to 12.5, Z: -5 to 7)
+createBox(0.9, 0.95, 3.2, 11.8, 0.55, -2.5, mat.wood);
+createBox(3.5, 0.9, 0.8, 9.0, 0.52, -4.3, mat.appliance);
+// Ceiling Lights
+addCeilingLight(1.5, 3.4, 3.5);   // Living Room
+addCeilingLight(1.5, 3.4, -3.5);  // Kitchen
+addCeilingLight(-3.6, 3.4, 0);    // Hallway
+addCeilingLight(-7.6, 3.4, 3.0);  // Bedroom
+addCeilingLight(-7.6, 3.4, -4.2); // Bathroom
+addCeilingLight(9.0, 3.4, 1.0);   // Garage
+// --- 9. PLAYER CONTROLLER & ROOM HUD ---
+const controls = new PointerLockControls(camera, document.body);
+const overlay = document.getElementById('overlay');
+const hud = document.getElementById('hud');
+const roomLabel = document.getElementById('room-name');
+const crosshair = document.getElementById('crosshair');
+overlay.addEventListener('click', () => controls.lock());
+controls.addEventListener('lock', () => {
+overlay.style.display = 'none';
+hud.style.display = 'block';
+crosshair.style.display = 'block';
+});
+controls.addEventListener('unlock', () => {
+overlay.style.display = 'flex';
+hud.style.display = 'none';
+crosshair.style.display = 'none';
+});
+const player = {
+pos: new THREE.Vector3(-1, 0, 17), // Start on front walkway facing porch
+velY: 0,
+radius: 0.4,
+eyeHeight: 1.7,
+onGround: true
+};
+camera.position.set(player.pos.x, player.pos.y + player.eyeHeight, player.pos.z);
+const keys = {};
+window.addEventListener('keydown', (e) => {
+keys[e.code] = true;
+if (e.code === 'Space' && player.onGround && controls.isLocked) {
+player.velY = 7.0;
+player.onGround = false;
+}
+});
+window.addEventListener('keyup', (e) => (keys[e.code] = false));
+window.addEventListener('resize', () => {
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
+});
+function resolveCollisions() {
+const feetY = player.pos.y + 0.3;
+const headY = player.pos.y + player.eyeHeight + 0.1;
+for (const box of wallColliders) {
+if (headY <= box.minY || feetY >= box.maxY) continue;
+const closestX = Math.max(box.minX, Math.min(player.pos.x, box.maxX));
+const closestZ = Math.max(box.minZ, Math.min(player.pos.z, box.maxZ));
+const dx = player.pos.x - closestX;
+const dz = player.pos.z - closestZ;
+const distSq = dx * dx + dz * dz;
+if (distSq < player.radius * player.radius) {
+const dist = Math.sqrt(distSq);
+if (dist > 0.0001) {
+const overlap = player.radius - dist;
+player.pos.x += (dx / dist) * overlap;
+player.pos.z += (dz / dist) * overlap;
+}
+}
+}
+}
+function getFloorHeight() {
+let maxFloor = 0;
+for (const f of floorSurfaces) {
+if (
+player.pos.x >= f.minX - 0.15 &&
+player.pos.x <= f.maxX + 0.15 &&
+player.pos.z >= f.minZ - 0.15 &&
+player.pos.z <= f.maxZ + 0.15
+) {
+if (f.topY <= player.pos.y + 0.5 && f.topY > maxFloor) {
+maxFloor = f.topY;
+}
+}
+}
+return maxFloor;
+}
+function updateRoomHUD() {
+const { x, z } = player.pos;
+if (x > 5.5 && x <= 12.5 && z >= -5 && z <= 7) {
+roomLabel.textContent = 'Attached Garage';
+} else if (z > 7 || z < -7 || x < -10.5 || x > 5.5) {
+roomLabel.textContent = z < -7 ? 'Backyard' : 'Front Yard & Driveway';
+} else if (x >= -2.5) {
+roomLabel.textContent = z >= 0 ? 'Living Room' : 'Kitchen & Dining Area';
+} else if (x >= -4.8) {
+roomLabel.textContent = 'Hallway';
+} else {
+roomLabel.textContent = z >= -1.5 ? 'Bedroom' : 'Bathroom';
+}
+}
+// --- 10. ANIMATION LOOP ---
+const clock = new THREE.Clock();
+const forward = new THREE.Vector3();
+const right = new THREE.Vector3();
+function animate() {
+requestAnimationFrame(animate);
+const dt = Math.min(clock.getDelta(), 0.05);
+if (controls.isLocked) {
+camera.getWorldDirection(forward);
+forward.y = 0;
+forward.normalize();
+right.crossVectors(forward, camera.up).normalize();
+const speed = keys['ShiftLeft'] ? 9.0 : 5.2;
+let moveX = 0, moveZ = 0;
+if (keys['KeyW']) { moveX += forward.x; moveZ += forward.z; }
+if (keys['KeyS']) { moveX -= forward.x; moveZ -= forward.z; }
+if (keys['KeyD']) { moveX += right.x;   moveZ += right.z; }
+if (keys['KeyA']) { moveX -= right.x;   moveZ -= right.z; }
+const len = Math.hypot(moveX, moveZ);
+if (len > 0) {
+player.pos.x += (moveX / len) * speed * dt;
+player.pos.z += (moveZ / len) * speed * dt;
+}
+resolveCollisions();
+player.velY -= 20 * dt;
+player.pos.y += player.velY * dt;
+const floorY = getFloorHeight();
+if (player.pos.y <= floorY) {
+player.pos.y = floorY;
+player.velY = 0;
+player.onGround = true;
+}
+camera.position.set(player.pos.x, player.pos.y + player.eyeHeight, player.pos.z);
+updateRoomHUD();
+}
+renderer.render(scene, camera);
+}
+animate();
+
+
+</script>
+</body>
+</html>
